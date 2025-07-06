@@ -1,0 +1,49 @@
+﻿@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Localization
+@using BeroxAppy.Web.Pages.Services.ServiceCategories
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@model CreateEditModalModel
+@inject IHtmlLocalizer<BeroxAppyResource> L
+@{
+    Layout = null;
+}
+
+<form asp-page="/Services/ServiceCategories/CreateEditModal">
+    <abp-modal>
+        <abp-modal-header title="@(Model.Id == Guid.Empty ? "Yeni Kategori" : "Kategori Düzenle")"></abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="Id" type="hidden" />
+
+            <div class="mb-3">
+                <label class="form-label" asp-for="ServiceCategory.Name">Kategori Adı *</label>
+                <input type="text" class="form-control" asp-for="ServiceCategory.Name" required />
+                <span asp-validation-for="ServiceCategory.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" asp-for="ServiceCategory.Color">Renk</label>
+                <div class="input-group">
+                    <input type="color" class="form-control form-control-color" asp-for="ServiceCategory.Color" />
+                    <input type="text" class="form-control" asp-for="ServiceCategory.Color" placeholder="#3498db" />
+                </div>
+                <span asp-validation-for="ServiceCategory.Color" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" asp-for="ServiceCategory.DisplayOrder">Sıralama</label>
+                <input type="number" class="form-control" asp-for="ServiceCategory.DisplayOrder" min="0" />
+                <span asp-validation-for="ServiceCategory.DisplayOrder" class="text-danger"></span>
+                <div class="form-text">Düşük sayı önce gösterilir</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" asp-for="ServiceCategory.IsActive" />
+                    <label class="form-check-label" asp-for="ServiceCategory.IsActive">Aktif</label>
+                </div>
+            </div>
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>

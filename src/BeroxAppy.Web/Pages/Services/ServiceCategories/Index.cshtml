@@ -1,0 +1,48 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using Volo.Abp.AspNetCore.Mvc.UI.Layout
+@using BeroxAppy.Services
+@using BeroxAppy.Web.Pages.Services.ServiceCategories
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<BeroxAppyResource> L
+
+@section scripts
+{
+    <abp-script-bundle>
+        <abp-script src="/Pages/Services/ServiceCategories/CreateEditModal.js" />
+        <abp-script src="/Pages/Services/ServiceCategories/Index.js" />
+    </abp-script-bundle>
+}
+
+<abp-card>
+    <abp-card-header>
+        <abp-row>
+            <abp-column size-md="_6">
+                <abp-card-title>Hizmet Kategorileri</abp-card-title>
+            </abp-column>
+            <abp-column size-md="_6" class="text-end">
+                <abp-button id="NewServiceCategoryButton"
+                            text="Yeni Kategori"
+                            icon="plus"
+                            button-type="Primary" />
+            </abp-column>
+        </abp-row>
+    </abp-card-header>
+    <abp-card-body>
+        <abp-table striped-rows="true" id="ServiceCategoriesTable" class="nowrap">
+            <thead>
+                <tr>
+                    <th>İşlemler</th>
+                    <th>Sıra</th>
+                    <th>Renk</th>
+                    <th>Kategori Adı</th>
+                    <th>Durum</th>
+                    <th>Oluşturma Tarihi</th>
+                </tr>
+            </thead>
+        </abp-table>
+    </abp-card-body>
+</abp-card>

@@ -34,6 +34,32 @@ public class BeroxAppyMenuContributor : IMenuContributor
             )
         );
 
+
+        // Hizmetler Ana Menüsü
+        var servicesMenu = new ApplicationMenuItem(
+            "BeroxAppy.Services",
+            "Hizmetler",
+            icon: "fas fa-cogs"
+        );
+
+        // Hizmet Kategorileri
+        servicesMenu.AddItem(new ApplicationMenuItem(
+            "BeroxAppy.ServiceCategories",
+            "Hizmet Kategorileri",
+            url: "/Services/ServiceCategories",
+            icon: "fas fa-tags"
+        ));
+
+        // Hizmetler
+        servicesMenu.AddItem(new ApplicationMenuItem(
+            "BeroxAppy.Services",
+            "Hizmetler",
+            url: "/Services/Services",
+            icon: "fas fa-cut"
+        ));
+
+        context.Menu.AddItem(servicesMenu);
+
         if (MultiTenancyConsts.IsEnabled)
         {
             administration.SetSubItemOrder(TenantManagementMenuNames.GroupName, 1);
