@@ -1,0 +1,207 @@
+﻿@* Pages/Employees/CreateEditModal.cshtml *@
+@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Localization
+@using BeroxAppy.Web.Pages.Employees
+@using BeroxAppy.Enums
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@model CreateEditModalModel
+@inject IHtmlLocalizer<BeroxAppyResource> L
+@{
+    Layout = null;
+}
+
+<form asp-page="/Employees/CreateEditModal">
+    <abp-modal size="ExtraLarge">
+        <abp-modal-header title="@(Model.Id == Guid.Empty ? "Yeni Çalışan" : "Çalışan Düzenle")"></abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="Id" type="hidden" />
+
+            <!-- Kişisel Bilgiler -->
+            <h6 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Kişisel Bilgiler</h6>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.FirstName">Ad *</label>
+                        <input type="text" class="form-control" asp-for="Employee.FirstName" required />
+                        <span asp-validation-for="Employee.FirstName" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.LastName">Soyad *</label>
+                        <input type="text" class="form-control" asp-for="Employee.LastName" required />
+                        <span asp-validation-for="Employee.LastName" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.Phone">Telefon *</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                            <input type="tel" class="form-control" asp-for="Employee.Phone"
+                                   placeholder="5XX XXX XX XX" required />
+                        </div>
+                        <span asp-validation-for="Employee.Phone" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.Email">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" class="form-control" asp-for="Employee.Email" />
+                        </div>
+                        <span asp-validation-for="Employee.Email" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Çalışan Bilgileri -->
+            <hr>
+            <h6 class="text-primary mb-3"><i class="fas fa-briefcase me-2"></i>Çalışan Bilgileri</h6>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.EmployeeType">Çalışan Tipi</label>
+                        <select class="form-select" asp-for="Employee.EmployeeType">
+                            <option value="@((int)EmployeeType.Staff)">Personel</option>
+                            <option value="@((int)EmployeeType.Secretary)">Sekreter</option>
+                            <option value="@((int)EmployeeType.Manager)">Müdür</option>
+                            <option value="@((int)EmployeeType.Device)">Cihaz</option>
+                        </select>
+                        <span asp-validation-for="Employee.EmployeeType" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.ServiceGender">Hizmet Cinsiyeti</label>
+                        <select class="form-select" asp-for="Employee.ServiceGender">
+                            <option value="@((int)Gender.Unisex)">Unisex</option>
+                            <option value="@((int)Gender.Male)">Erkek</option>
+                            <option value="@((int)Gender.Female)">Kadın</option>
+                        </select>
+                        <span asp-validation-for="Employee.ServiceGender" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.CalendarColor">Takvim Rengi</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control form-control-color" asp-for="Employee.CalendarColor" />
+                            <input type="text" class="form-control" asp-for="Employee.CalendarColor" placeholder="#3498db" />
+                        </div>
+                        <span asp-validation-for="Employee.CalendarColor" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maaş ve Komisyon -->
+            <hr>
+            <h6 class="text-primary mb-3"><i class="fas fa-money-bill me-2"></i>Maaş ve Komisyon</h6>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.FixedSalary">Sabit Maaş (₺)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₺</span>
+                            <input type="number" class="form-control" asp-for="Employee.FixedSalary"
+                                   min="0" step="100" />
+                        </div>
+                        <span asp-validation-for="Employee.FixedSalary" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.ServiceCommissionRate">Hizmet Komisyonu (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" asp-for="Employee.ServiceCommissionRate"
+                                   min="0" max="100" step="0.5" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <span asp-validation-for="Employee.ServiceCommissionRate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.ProductCommissionRate">Ürün Komisyonu (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" asp-for="Employee.ProductCommissionRate"
+                                   min="0" max="100" step="0.5" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <span asp-validation-for="Employee.ProductCommissionRate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Employee.PackageCommissionRate">Paket Komisyonu (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" asp-for="Employee.PackageCommissionRate"
+                                   min="0" max="100" step="0.5" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <span asp-validation-for="Employee.PackageCommissionRate" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kullanıcı Bilgileri (Sadece Create'de) -->
+            @if (Model.Id == Guid.Empty)
+            {
+                <hr>
+                <h6 class="text-primary mb-3"><i class="fas fa-key me-2"></i>Kullanıcı Hesabı</h6>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label" asp-for="Employee.UserName">Kullanıcı Adı</label>
+                            <input type="text" class="form-control" asp-for="Employee.UserName"
+                                   placeholder="Boş bırakılırsa kullanıcı oluşturulmaz" />
+                            <span asp-validation-for="Employee.UserName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label" asp-for="Employee.Password">Şifre</label>
+                            <input type="password" class="form-control" asp-for="Employee.Password"
+                                   placeholder="Kullanıcı adı girilirse zorunlu" />
+                            <span asp-validation-for="Employee.Password" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Ayarlar -->
+            <hr>
+            <h6 class="text-primary mb-3"><i class="fas fa-cog me-2"></i>Ayarlar</h6>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" asp-for="Employee.CanTakeOnlineReservation" />
+                            <label class="form-check-label" asp-for="Employee.CanTakeOnlineReservation">Online Rezervasyon Alabilir</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" asp-for="Employee.IsActive" />
+                            <label class="form-check-label" asp-for="Employee.IsActive">Aktif</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>

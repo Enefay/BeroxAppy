@@ -1,0 +1,120 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using Volo.Abp.AspNetCore.Mvc.UI.Layout
+@using BeroxAppy.Employees
+@using BeroxAppy.Web.Pages.Employees
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<BeroxAppyResource> L
+
+@section scripts
+{
+    <abp-script-bundle>
+        <abp-script src="/Pages/Employees/CreateEditModal.js" />
+        <abp-script src="/Pages/Employees/WorkingHoursModal.js" />
+        <abp-script src="/Pages/Employees/ServiceAssignmentModal.js" />
+        <abp-script src="/Pages/Employees/Index.js" />
+    </abp-script-bundle>
+}
+
+<abp-card>
+    <abp-card-header>
+        <abp-row>
+            <abp-column size-md="_6">
+                <abp-card-title>Çalışanlar</abp-card-title>
+            </abp-column>
+            <abp-column size-md="_6" class="text-end">
+                <abp-button id="NewEmployeeButton"
+                            text="Yeni Çalışan"
+                            icon="plus"
+                            button-type="Primary" />
+            </abp-column>
+        </abp-row>
+    </abp-card-header>
+    <abp-card-body>
+        <!-- Filtre Alanları -->
+        <abp-row class="mb-3">
+            <abp-column size-md="_3">
+                <label class="form-label">Arama</label>
+                <input type="text" id="FilterInput" class="form-control" placeholder="Ad, soyad, telefon, email..." />
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Çalışan Tipi</label>
+                <select id="EmployeeTypeFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="0">Personel</option>
+                    <option value="1">Sekreter</option>
+                    <option value="2">Müdür</option>
+                    <option value="3">Cihaz</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Hizmet Cinsiyeti</label>
+                <select id="ServiceGenderFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="0">Unisex</option>
+                    <option value="1">Erkek</option>
+                    <option value="2">Kadın</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Durum</label>
+                <select id="IsActiveFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="true">Aktif</option>
+                    <option value="false">Pasif</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Kullanıcı</label>
+                <select id="HasUserFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="true">Var</option>
+                    <option value="false">Yok</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_1" class="d-flex align-items-end">
+                <abp-button id="ClearFiltersButton" text="Temizle" button-type="Outline_Secondary" size="Small" />
+            </abp-column>
+        </abp-row>
+
+        <abp-row class="mb-3">
+            <abp-column size-md="_3">
+                <label class="form-label">Maaş Aralığı (₺)</label>
+                <div class="input-group">
+                    <input type="number" id="MinSalaryFilter" class="form-control" placeholder="Min" min="0" step="100" />
+                    <span class="input-group-text">-</span>
+                    <input type="number" id="MaxSalaryFilter" class="form-control" placeholder="Max" min="0" step="100" />
+                </div>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Online Rezervasyon</label>
+                <select id="CanTakeOnlineReservationFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="true">Alabilir</option>
+                    <option value="false">Alamaz</option>
+                </select>
+            </abp-column>
+        </abp-row>
+
+        <abp-table striped-rows="true" id="EmployeesTable" class="nowrap">
+            <thead>
+                <tr>
+                    <th>İşlemler</th>
+                    <th>Ad Soyad</th>
+                    <th>Telefon</th>
+                    <th>Email</th>
+                    <th>Tip</th>
+                    <th>Hizmet Cinsiyeti</th>
+                    <th>Maaş</th>
+                    <th>Komisyon</th>
+                    <th>Kullanıcı</th>
+                    <th>Durum</th>
+                    <th>Kayıt Tarihi</th>
+                </tr>
+            </thead>
+        </abp-table>
+    </abp-card-body>
+</abp-card>

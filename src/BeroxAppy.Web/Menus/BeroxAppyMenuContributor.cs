@@ -67,8 +67,18 @@ public class BeroxAppyMenuContributor : IMenuContributor
             url: "/Customers",
             icon: "fas fa-users"
         );
-
         context.Menu.AddItem(customersMenu);
+
+        // Çalışanlar Menüsü - YENİ!
+        var employeesMenu = new ApplicationMenuItem(
+            "BeroxAppy.Employees",
+            "Çalışanlar",
+            url: "/Employees",
+            icon: "fas fa-users-cog"
+        );
+
+        context.Menu.AddItem(employeesMenu);
+
 
         if (MultiTenancyConsts.IsEnabled)
         {
