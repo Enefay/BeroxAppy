@@ -1,0 +1,135 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using Volo.Abp.AspNetCore.Mvc.UI.Layout
+@using BeroxAppy.Customers
+@using BeroxAppy.Web.Pages.Customers
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<BeroxAppyResource> L
+
+@section scripts
+{
+    <abp-script-bundle>
+        <abp-script src="/Pages/Customers/CreateEditModal.js" />
+        <abp-script src="/Pages/Customers/Index.js" />
+    </abp-script-bundle>
+}
+
+<abp-card>
+    <abp-card-header>
+        <abp-row>
+            <abp-column size-md="_6">
+                <abp-card-title>Müşteriler</abp-card-title>
+            </abp-column>
+            <abp-column size-md="_6" class="text-end">
+                <abp-button id="NewCustomerButton"
+                            text="Yeni Müşteri"
+                            icon="plus"
+                            button-type="Primary" />
+                <abp-button id="StatsButton"
+                            text="İstatistikler"
+                            icon="chart-bar"
+                            button-type="Outline_Info" />
+            </abp-column>
+        </abp-row>
+    </abp-card-header>
+    <abp-card-body>
+        <!-- Filtre Alanları -->
+        <abp-row class="mb-3">
+            <abp-column size-md="_3">
+                <label class="form-label">Arama</label>
+                <input type="text" id="FilterInput" class="form-control" placeholder="Ad, telefon, email..." />
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Cinsiyet</label>
+                <select id="GenderFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="0">Belirtilmemiş</option>
+                    <option value="1">Erkek</option>
+                    <option value="2">Kadın</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Durum</label>
+                <select id="IsActiveFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="true">Aktif</option>
+                    <option value="false">Pasif</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Borç Durumu</label>
+                <select id="HasDebtFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="true">Borçlu</option>
+                    <option value="false">Borcu Yok</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_3">
+                <label class="form-label">İndirim Oranı (%)</label>
+                <div class="input-group">
+                    <input type="number" id="MinDiscountFilter" class="form-control" placeholder="Min" min="0" max="100" step="1" />
+                    <span class="input-group-text">-</span>
+                    <input type="number" id="MaxDiscountFilter" class="form-control" placeholder="Max" min="0" max="100" step="1" />
+                </div>
+            </abp-column>
+        </abp-row>
+
+        <abp-row class="mb-3">
+            <abp-column size-md="_4">
+                <label class="form-label">Doğum Tarihi Aralığı</label>
+                <div class="input-group">
+                    <input type="date" id="BirthDateFromFilter" class="form-control" />
+                    <span class="input-group-text">-</span>
+                    <input type="date" id="BirthDateToFilter" class="form-control" />
+                </div>
+            </abp-column>
+            <abp-column size-md="_2" class="d-flex align-items-end">
+                <abp-button id="ClearFiltersButton" text="Temizle" button-type="Outline_Secondary" size="Small" />
+            </abp-column>
+            <abp-column size-md="_6" class="d-flex align-items-end justify-content-end">
+                <abp-button id="ExportExcelButton" text="Excel'e Aktar" icon="file-excel" button-type="Outline_Success" size="Small" />
+                <abp-button id="BirthdayTodayButton" text="Bugün Doğum Günü" icon="birthday-cake" button-type="Outline_Warning" size="Small" />
+            </abp-column>
+        </abp-row>
+
+        <abp-table striped-rows="true" id="CustomersTable" class="nowrap">
+            <thead>
+                <tr>
+                    <th>İşlemler</th>
+                    <th>Ad Soyad</th>
+                    <th>Telefon</th>
+                    <th>Email</th>
+                    <th>Cinsiyet</th>
+                    <th>Yaş</th>
+                    <th>İndirim</th>
+                    <th>Borç</th>
+                    <th>Durum</th>
+                    <th>Kayıt Tarihi</th>
+                </tr>
+            </thead>
+        </abp-table>
+    </abp-card-body>
+</abp-card>
+
+<!-- Stats Modal -->
+<div class="modal fade" id="StatsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Müşteri İstatistikleri</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="StatsContent">
+                    <!-- Stats content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>

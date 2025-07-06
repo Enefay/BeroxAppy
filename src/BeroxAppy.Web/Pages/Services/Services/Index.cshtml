@@ -1,0 +1,88 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using Volo.Abp.AspNetCore.Mvc.UI.Layout
+@using BeroxAppy.Services
+@using BeroxAppy.Web.Pages.Services.Services
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<BeroxAppyResource> L
+
+@section scripts
+{
+    <abp-script-bundle>
+        <abp-script src="/Pages/Services/Services/CreateEditModal.js" />
+        <abp-script src="/Pages/Services/Services/Index.js" />
+    </abp-script-bundle>
+}
+
+<abp-card>
+    <abp-card-header>
+        <abp-row>
+            <abp-column size-md="_6">
+                <abp-card-title>Hizmetler</abp-card-title>
+            </abp-column>
+            <abp-column size-md="_6" class="text-end">
+                <abp-button id="NewServiceButton"
+                            text="Yeni Hizmet"
+                            icon="plus"
+                            button-type="Primary" />
+            </abp-column>
+        </abp-row>
+    </abp-card-header>
+    <abp-card-body>
+        <!-- Filtre Alanları -->
+        <abp-row class="mb-3">
+            <abp-column size-md="_3">
+                <label class="form-label">Kategori</label>
+                <select id="CategoryFilter" class="form-select">
+                    <option value="">Tüm Kategoriler</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Cinsiyet</label>
+                <select id="GenderFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="0">Unisex</option>
+                    <option value="1">Erkek</option>
+                    <option value="2">Kadın</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_2">
+                <label class="form-label">Durum</label>
+                <select id="IsActiveFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="true">Aktif</option>
+                    <option value="false">Pasif</option>
+                </select>
+            </abp-column>
+            <abp-column size-md="_3">
+                <label class="form-label">Fiyat Aralığı</label>
+                <div class="input-group">
+                    <input type="number" id="MinPriceFilter" class="form-control" placeholder="Min" min="0" step="0.01" />
+                    <span class="input-group-text">-</span>
+                    <input type="number" id="MaxPriceFilter" class="form-control" placeholder="Max" min="0" step="0.01" />
+                </div>
+            </abp-column>
+            <abp-column size-md="_2" class="d-flex align-items-end">
+                <abp-button id="ClearFiltersButton" text="Temizle" button-type="Outline_Secondary" size="Small" />
+            </abp-column>
+        </abp-row>
+
+        <abp-table striped-rows="true" id="ServicesTable" class="nowrap">
+            <thead>
+                <tr>
+                    <th>İşlemler</th>
+                    <th>Hizmet Adı</th>
+                    <th>Kategori</th>
+                    <th>Cinsiyet</th>
+                    <th>Süre</th>
+                    <th>Fiyat</th>
+                    <th>Durum</th>
+                    <th>Oluşturma Tarihi</th>
+                </tr>
+            </thead>
+        </abp-table>
+    </abp-card-body>
+</abp-card>

@@ -1,0 +1,121 @@
+﻿@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Localization
+@using BeroxAppy.Web.Pages.Customers
+@using BeroxAppy.Enums
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@model CreateEditModalModel
+@inject IHtmlLocalizer<BeroxAppyResource> L
+@{
+    Layout = null;
+}
+
+<form asp-page="/Customers/CreateEditModal">
+    <abp-modal>
+        <abp-modal-header title="@(Model.Id == Guid.Empty ? "Yeni Müşteri" : "Müşteri Düzenle")"></abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="Id" type="hidden" />
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.FullName">Ad Soyad *</label>
+                        <input type="text" class="form-control" asp-for="Customer.FullName" required />
+                        <span asp-validation-for="Customer.FullName" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.Gender">Cinsiyet</label>
+                        <select class="form-select" asp-for="Customer.Gender">
+                            <option value="@((int)Gender.Unisex)">Belirtilmemiş</option>
+                            <option value="@((int)Gender.Male)">Erkek</option>
+                            <option value="@((int)Gender.Female)">Kadın</option>
+                        </select>
+                        <span asp-validation-for="Customer.Gender" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.Phone">Telefon *</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                            <input type="tel" class="form-control" asp-for="Customer.Phone"
+                                   placeholder="5XX XXX XX XX" required />
+                        </div>
+                        <span asp-validation-for="Customer.Phone" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.Email">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" class="form-control" asp-for="Customer.Email" />
+                        </div>
+                        <span asp-validation-for="Customer.Email" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.BirthDate">Doğum Tarihi</label>
+                        <input type="date" class="form-control" asp-for="Customer.BirthDate" />
+                        <span asp-validation-for="Customer.BirthDate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.DiscountRate">İndirim Oranı (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" asp-for="Customer.DiscountRate"
+                                   min="0" max="100" step="0.01" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <span asp-validation-for="Customer.DiscountRate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Customer.TotalDebt">Toplam Borç (₺)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₺</span>
+                            <input type="number" class="form-control" asp-for="Customer.TotalDebt"
+                                   min="0" step="0.01" />
+                        </div>
+                        <span asp-validation-for="Customer.TotalDebt" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" asp-for="Customer.Instagram">Instagram</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fab fa-instagram"></i></span>
+                    <input type="text" class="form-control" asp-for="Customer.Instagram" placeholder="@@kullaniciadi" />
+                </div>
+                <span asp-validation-for="Customer.Instagram" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" asp-for="Customer.Note">Notlar</label>
+                <textarea class="form-control" asp-for="Customer.Note" rows="3"
+                          placeholder="Müşteri hakkında notlar..."></textarea>
+                <span asp-validation-for="Customer.Note" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" asp-for="Customer.IsActive" />
+                    <label class="form-check-label" asp-for="Customer.IsActive">Aktif</label>
+                </div>
+            </div>
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>

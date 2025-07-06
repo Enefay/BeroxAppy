@@ -1,21 +1,16 @@
 ﻿using BeroxAppy.Enums;
-using BeroxAppy.Finance;
-using BeroxAppy.Reservations;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Volo.Abp.Domain.Entities.Auditing;
-using Volo.Abp.MultiTenancy;
+using Volo.Abp.Application.Dtos;
 
 namespace BeroxAppy.Customers
 {
-    // Müşteriler
-    public class Customer : FullAuditedAggregateRoot<Guid>, IMultiTenant
+    public class CustomerDto : FullAuditedEntityDto<Guid>
     {
-        public Guid? TenantId { get; set; }
         [Required]
         [MaxLength(100)]
         public string FullName { get; set; }
@@ -37,16 +32,16 @@ namespace BeroxAppy.Customers
         [MaxLength(50)]
         public string Instagram { get; set; }
 
+        [Range(0, 100)]
         public decimal DiscountRate { get; set; } // %
 
         public decimal TotalDebt { get; set; } // Toplam borç
 
         public bool IsActive { get; set; } = true;
 
-        // Navigation properties
-        public ICollection<Reservation> Reservations { get; set; }
-        public ICollection<Payment> Payments { get; set; }
-
-   
+        // Display için hesaplanan alanlar
+        public string GenderDisplay { get; set; } // "Erkek", "Kadın", "Belirtilmemiş"
+        public int? Age { get; set; } // Yaş hesaplama
+        public string DebtStatusDisplay { get; set; } // "Borcu Yok", "₺150 Borç"
     }
 }

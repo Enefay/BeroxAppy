@@ -26,6 +26,13 @@ namespace BeroxAppy.Services
             _categoryRepository = categoryRepository;
         }
 
+
+        public override async Task<ServiceDto> CreateAsync(ServiceDto input)
+        {
+          
+            return await base.CreateAsync(input);
+        }
+
         /// <summary>
         /// Filtreleme ile liste getir (override)
         /// </summary>

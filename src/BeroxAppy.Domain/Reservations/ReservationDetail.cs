@@ -7,11 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities;
+using Volo.Abp.MultiTenancy;
 
 namespace BeroxAppy.Reservations
 {
     // Randevu Detayları - ÇALIŞAN-HİZMET EŞLEŞMESİ
-    public class ReservationDetail : Entity<Guid>
+    public class ReservationDetail : Entity<Guid>, IMultiTenant
     {
         public Guid? TenantId { get; set; }
 

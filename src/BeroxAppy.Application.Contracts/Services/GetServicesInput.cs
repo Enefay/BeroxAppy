@@ -10,7 +10,7 @@ namespace BeroxAppy.Services
 {
     public class GetServicesInput : PagedAndSortedResultRequestDto
     {
-        public string Filter { get; set; }
+        public string? Filter { get; set; }
         public Guid? CategoryId { get; set; }
         public Gender? TargetGender { get; set; }
         public bool? IsActive { get; set; }

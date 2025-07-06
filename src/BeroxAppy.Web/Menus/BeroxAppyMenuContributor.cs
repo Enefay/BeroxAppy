@@ -60,6 +60,16 @@ public class BeroxAppyMenuContributor : IMenuContributor
 
         context.Menu.AddItem(servicesMenu);
 
+        // Müşteriler Menüsü 
+        var customersMenu = new ApplicationMenuItem(
+            "BeroxAppy.Customers",
+            "Müşteriler",
+            url: "/Customers",
+            icon: "fas fa-users"
+        );
+
+        context.Menu.AddItem(customersMenu);
+
         if (MultiTenancyConsts.IsEnabled)
         {
             administration.SetSubItemOrder(TenantManagementMenuNames.GroupName, 1);

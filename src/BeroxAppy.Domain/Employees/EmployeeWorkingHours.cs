@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities;
+using Volo.Abp.MultiTenancy;
 
 namespace BeroxAppy.Employees
 {
     // Çalışma Saatleri
-    public class EmployeeWorkingHours : Entity<Guid>
+    public class EmployeeWorkingHours : Entity<Guid>, IMultiTenant
     {
         public Guid? TenantId { get; set; }
 

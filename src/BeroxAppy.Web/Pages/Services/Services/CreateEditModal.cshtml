@@ -1,0 +1,86 @@
+﻿@* Pages/Services/Services/CreateEditModal.cshtml *@
+@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Localization
+@using BeroxAppy.Web.Pages.Services.Services
+@using BeroxAppy.Enums
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@model CreateEditModalModel
+@inject IHtmlLocalizer<BeroxAppyResource> L
+@{
+    Layout = null;
+}
+
+<form asp-page="/Services/Services/CreateEditModal">
+    <abp-modal>
+        <abp-modal-header title="@(Model.Id == Guid.Empty ? "Yeni Hizmet" : "Hizmet Düzenle")"></abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="Id" type="hidden" />
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Service.Title">Hizmet Adı *</label>
+                        <input type="text" class="form-control" asp-for="Service.Title" required />
+                        <span asp-validation-for="Service.Title" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Service.CategoryId">Kategori</label>
+                        <select class="form-select" asp-for="Service.CategoryId" asp-items="Model.Categories">
+                            <option value="">Kategori Seçin</option>
+                        </select>
+                        <span asp-validation-for="Service.CategoryId" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" asp-for="Service.Description">Açıklama</label>
+                <textarea class="form-control" asp-for="Service.Description" rows="3"></textarea>
+                <span asp-validation-for="Service.Description" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Service.TargetGender">Hedef Cinsiyet</label>
+                        <select class="form-select" asp-for="Service.TargetGender">
+                            <option value="@((int)Gender.Unisex)">Unisex</option>
+                            <option value="@((int)Gender.Male)">Erkek</option>
+                            <option value="@((int)Gender.Female)">Kadın</option>
+                        </select>
+                        <span asp-validation-for="Service.TargetGender" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Service.DurationMinutes">Süre (Dakika) *</label>
+                        <input type="number" class="form-control" asp-for="Service.DurationMinutes" min="1" max="1440" required />
+                        <span asp-validation-for="Service.DurationMinutes" class="text-danger"></span>
+                        <div class="form-text">1-1440 dakika arası</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Service.Price">Fiyat (₺) *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₺</span>
+                            <input type="number" class="form-control" asp-for="Service.Price" min="0.01" step="0.01" required />
+                        </div>
+                        <span asp-validation-for="Service.Price" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" asp-for="Service.IsActive" />
+                    <label class="form-check-label" asp-for="Service.IsActive">Aktif</label>
+                </div>
+            </div>
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>

@@ -33,7 +33,7 @@ namespace BeroxAppy.Services
         public string CategoryName { get; set; } // Include için
 
         // Display için hesaplanan alanlar
-        public string DurationDisplay { get; set; } // "1 saat 30 dakika"
-        public string TargetGenderDisplay { get; set; } // "Unisex", "Erkek", "Kadın"
+        public string? DurationDisplay { get; set; } // "1 saat 30 dakika"
+        public string? TargetGenderDisplay { get; set; } // "Unisex", "Erkek", "Kadın"
     }
 }

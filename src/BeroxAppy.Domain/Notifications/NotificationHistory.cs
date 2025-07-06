@@ -7,11 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities.Auditing;
+using Volo.Abp.MultiTenancy;
 
 namespace BeroxAppy.Notifications
 {
     // SMS/Bildirim Geçmişi
-    public class NotificationHistory : FullAuditedAggregateRoot<Guid>
+    public class NotificationHistory : FullAuditedAggregateRoot<Guid>, IMultiTenant
     {
         public Guid? TenantId { get; set; }
 

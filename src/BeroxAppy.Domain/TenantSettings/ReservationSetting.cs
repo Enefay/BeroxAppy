@@ -4,10 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities;
+using Volo.Abp.MultiTenancy;
 
 namespace BeroxAppy.TenantSettings
 {
-    public class ReservationSetting : Entity<Guid>
+    public class ReservationSetting : Entity<Guid>, IMultiTenant
     {
         public Guid? TenantId { get; set; }
 

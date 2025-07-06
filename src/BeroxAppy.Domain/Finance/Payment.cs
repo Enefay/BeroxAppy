@@ -8,11 +8,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities.Auditing;
+using Volo.Abp.MultiTenancy;
 
 namespace BeroxAppy.Finance
 {
     // Tahsilat/Ödeme
-    public class Payment : FullAuditedAggregateRoot<Guid>
+    public class Payment : FullAuditedAggregateRoot<Guid>, IMultiTenant
     {
         public Guid? TenantId { get; set; }
 
