@@ -113,16 +113,15 @@ namespace BeroxAppy.Web.Pages.Employees
                 if (ex.Message.Contains("email"))
                 {
                     ModelState.AddModelError("Employee.Email", ex.Message);
-                    return Page();
                 }
                 if (ex.Message.Contains("telefon"))
                 {
                     ModelState.AddModelError("Employee.Phone", ex.Message);
-                    return Page();
                 }
 
                 ModelState.AddModelError("", ex.Message);
-                return Page();
+                throw;
+
             }
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -119,6 +120,15 @@ namespace BeroxAppy.Employees
         /// </summary>
         public override async Task<PagedResultDto<EmployeeDto>> GetListAsync(GetEmployeesInput input)
         {
+
+            var query = await Repository.GetQueryableAsync();
+
+            if (input.Sorting?.Contains("fullName", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                query = query.OrderBy(e => e.FirstName).ThenBy(e => e.LastName);
+                input.Sorting = null; 
+            }
+
             var result = await base.GetListAsync(input);
 
             // Her bir DTO için display alanlarını doldur

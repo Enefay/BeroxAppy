@@ -108,10 +108,10 @@ $(function () {
                             },
                             {
                                 text: function (data) {
-                                    return data.record.hasUser ? 'Kullanıcı Yönetimi' : 'Kullanıcı Oluştur';
+                                    return data.hasUser ? 'Kullanıcı Yönetimi' : 'Kullanıcı Oluştur';
                                 },
                                 iconStyle: function (data) {
-                                    return data.record.hasUser ? 'fas fa-user-cog' : 'fas fa-user-plus';
+                                    return data.hasUser ? 'fas fa-user-cog' : 'fas fa-user-plus';
                                 },
                                 action: function (data) {
                                     if (data.record.hasUser) {
@@ -123,10 +123,10 @@ $(function () {
                             },
                             {
                                 text: function (data) {
-                                    return data.record.isActive ? 'Pasif Yap' : 'Aktif Yap';
+                                    return data.isActive ? 'Pasif Yap' : 'Aktif Yap';
                                 },
                                 iconStyle: function (data) {
-                                    return data.record.isActive ? 'fas fa-eye-slash' : 'fas fa-eye';
+                                    return data.isActive ? 'fas fa-eye-slash' : 'fas fa-eye';
                                 },
                                 action: function (data) {
                                     var newStatus = !data.record.isActive;
