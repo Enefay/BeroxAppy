@@ -525,7 +525,7 @@ namespace BeroxAppy.Reservations
         /// </summary>
         public async Task<bool> CheckAvailabilityAsync(Guid employeeId, DateTime dateTime, int durationMinutes)
         {
-            // Çalışma saatleri kontrolü
+            // 1) Çalışma saatleri kontrolü
             var workingHours = await _workingHoursRepository.FindAsync(x =>
                 x.EmployeeId == employeeId &&
                 x.DayOfWeek == dateTime.DayOfWeek &&
@@ -533,7 +533,8 @@ namespace BeroxAppy.Reservations
 
             if (workingHours == null)
             {
-                return false; // O gün çalışmıyor
+                // O gün çalışmıyor
+                return false;
             }
 
             var requestTime = dateTime.TimeOfDay;
@@ -550,27 +551,29 @@ namespace BeroxAppy.Reservations
             {
                 if (!(endTime <= workingHours.BreakStartTime || requestTime >= workingHours.BreakEndTime))
                 {
-                    return false; // Mola saatine denk geliyor
+                    // Mola saatine denk geliyor
+                    return false;
                 }
             }
 
-            // Başka rezervasyon var mı?
-            var existingReservations = await _reservationDetailRepository.GetListAsync(x =>
-                x.EmployeeId == employeeId);
+            // 2) Aynı gün ve çalışana ait rezervasyon detaylarını SQL tarafında filtrele
+            var reservationDetailsQueryable = await _reservationDetailRepository.GetQueryableAsync();
 
-            var conflictingReservations = existingReservations.Where(x =>
-            {
-                // Aynı gün mü?
-                var reservationQueryable = await _reservationRepository.GetQueryableAsync();
-                if (!reservationQueryable.Any(r => r.Id == x.ReservationId && r.ReservationDate.Date == dateTime.Date))
-                    return false;
+            var todaysDetails = reservationDetailsQueryable
+                .Where(x =>
+                    x.EmployeeId == employeeId &&
+                    x.Reservation.ReservationDate >= dateTime.Date &&
+                    x.Reservation.ReservationDate < dateTime.Date.AddDays(1))
+                .ToList(); // EF Core burada hem Reservation hem ReservationDate koşullarını SQL'e çevirir
 
-                // Saatler çakışıyor mu?
-                return !(endTime <= x.StartTime || requestTime >= x.EndTime);
-            });
+            // 3) Bellek içi çakışma kontrolü
+            var hasConflict = todaysDetails.Any(x =>
+                !(endTime <= x.StartTime || requestTime >= x.EndTime)
+            );
 
-            return !conflictingReservations.Any();
+            return !hasConflict;
         }
+
 
         /// <summary>
         /// Çalışan için müsait saatleri getir
@@ -682,69 +685,323 @@ namespace BeroxAppy.Reservations
             await _reservationRepository.UpdateAsync(reservation);
         }
 
-        public Task<List<CalendarEventDto>> GetCalendarEventsAsync(DateTime startDate, DateTime endDate, Guid? employeeId = null)
+        public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(DateTime startDate, DateTime endDate, Guid? employeeId = null)
         {
-            throw new NotImplementedException();
+            var queryable = await _reservationRepository.GetQueryableAsync();
+
+            queryable = queryable.Where(x =>
+                x.ReservationDate >= startDate.Date &&
+                x.ReservationDate <= endDate.Date);
+
+            if (employeeId.HasValue)
+            {
+                queryable = queryable.Where(x =>
+                    x.ReservationDetails.Any(d => d.EmployeeId == employeeId.Value));
+            }
+
+            var reservations = queryable.ToList();
+            var events = new List<CalendarEventDto>();
+
+            foreach (var reservation in reservations)
+            {
+                var evt = new CalendarEventDto
+                {
+                    Id = reservation.Id,
+                    Start = reservation.ReservationDate.Add(reservation.StartTime),
+                    End = reservation.ReservationDate.Add(reservation.EndTime),
+                    IsWalkIn = reservation.IsWalkIn,
+                    Status = GetReservationStatusDisplay(reservation.Status),
+                    TotalPrice = reservation.FinalPrice
+                };
+
+                var customer = await _customerRepository.FindAsync(reservation.CustomerId);
+                if (customer != null)
+                {
+                    evt.CustomerName = customer.FullName;
+                    evt.CustomerPhone = customer.Phone;
+                    evt.Title = customer.FullName;
+                }
+
+                var detailList = await _reservationDetailRepository.GetListAsync(x => x.ReservationId == reservation.Id);
+                var serviceTitles = new List<string>();
+                foreach (var detail in detailList)
+                {
+                    var service = await _serviceRepository.FindAsync(detail.ServiceId);
+                    if (service != null)
+                    {
+                        serviceTitles.Add(service.Title);
+                    }
+                }
+                evt.Services = string.Join(", ", serviceTitles);
+
+                evt.Color = reservation.IsWalkIn ? "#6c757d" : "#28a745";
+
+                events.Add(evt);
+            }
+
+            return events;
         }
 
-        public Task<List<ReservationDto>> GetTodayReservationsAsync()
+        public async Task<List<ReservationDto>> GetTodayReservationsAsync()
         {
-            throw new NotImplementedException();
+            var today = DateTime.Now.Date;
+            var list = await _reservationRepository.GetListAsync(x => x.ReservationDate == today);
+            var result = new List<ReservationDto>();
+            foreach (var reservation in list)
+            {
+                result.Add(await MapToReservationDtoAsync(reservation));
+            }
+            return result;
         }
 
-        public Task<List<ReservationDto>> GetUpcomingReservationsAsync(int hoursAhead = 2)
+        public async Task<List<ReservationDto>> GetUpcomingReservationsAsync(int hoursAhead = 2)
         {
-            throw new NotImplementedException();
+            var now = DateTime.Now;
+            var target = now.AddHours(hoursAhead);
+
+            var queryable = await _reservationRepository.GetQueryableAsync();
+            var reservations = queryable
+                .Where(x =>
+                    x.ReservationDate.Add(x.StartTime) >= now &&
+                    x.ReservationDate.Add(x.StartTime) <= target)
+                .OrderBy(x => x.ReservationDate)
+                .ThenBy(x => x.StartTime)
+                .ToList();
+
+            var result = new List<ReservationDto>();
+            foreach (var reservation in reservations)
+            {
+                result.Add(await MapToReservationDtoAsync(reservation));
+            }
+
+            return result;
         }
 
-        public Task<List<ReservationDto>> GetCustomerReservationsAsync(Guid customerId, int maxCount = 10)
+        public async Task<List<ReservationDto>> GetCustomerReservationsAsync(Guid customerId, int maxCount = 10)
         {
-            throw new NotImplementedException();
+            var queryable = await _reservationRepository.GetQueryableAsync();
+            var reservations = queryable
+                .Where(x => x.CustomerId == customerId)
+                .OrderByDescending(x => x.ReservationDate)
+                .ThenByDescending(x => x.StartTime)
+                .Take(maxCount)
+                .ToList();
+
+            var result = new List<ReservationDto>();
+            foreach (var reservation in reservations)
+            {
+                result.Add(await MapToReservationDtoAsync(reservation));
+            }
+            return result;
         }
 
-        public Task AddServiceToReservationAsync(Guid reservationId, CreateReservationDetailDto serviceDetail)
+        public async Task AddServiceToReservationAsync(Guid reservationId, CreateReservationDetailDto serviceDetail)
         {
-            throw new NotImplementedException();
+            var reservation = await _reservationRepository.GetAsync(reservationId);
+            var service = await _serviceRepository.GetAsync(serviceDetail.ServiceId);
+            var employee = await _employeeRepository.GetAsync(serviceDetail.EmployeeId);
+
+            var dateTime = reservation.ReservationDate.Add(serviceDetail.StartTime);
+            var available = await CheckAvailabilityAsync(employee.Id, dateTime, service.DurationMinutes);
+            if (!available)
+            {
+                throw new BusinessException($"{employee.FirstName} {employee.LastName} çalışanı belirtilen saatte müsait değil.");
+            }
+
+            var endTime = serviceDetail.StartTime.Add(TimeSpan.FromMinutes(service.DurationMinutes));
+            var price = serviceDetail.CustomPrice ?? service.Price;
+
+            var detail = new ReservationDetail
+            {
+                ReservationId = reservationId,
+                ServiceId = serviceDetail.ServiceId,
+                EmployeeId = serviceDetail.EmployeeId,
+                ServicePrice = price,
+                StartTime = serviceDetail.StartTime,
+                EndTime = endTime,
+                CommissionRate = employee.ServiceCommissionRate,
+                CommissionAmount = price * employee.ServiceCommissionRate / 100,
+                Note = serviceDetail.Note
+            };
+
+            await _reservationDetailRepository.InsertAsync(detail);
+
+            var allDetails = await _reservationDetailRepository.GetListAsync(x => x.ReservationId == reservationId);
+            reservation.StartTime = allDetails.Min(x => x.StartTime);
+            reservation.EndTime = allDetails.Max(x => x.EndTime);
+            await _reservationRepository.UpdateAsync(reservation);
+
+            await RecalculatePricesAsync(reservationId);
         }
 
-        public Task RemoveServiceFromReservationAsync(Guid reservationId, Guid reservationDetailId)
+        public async Task RemoveServiceFromReservationAsync(Guid reservationId, Guid reservationDetailId)
         {
-            throw new NotImplementedException();
+            await _reservationDetailRepository.DeleteAsync(reservationDetailId);
+
+            var reservation = await _reservationRepository.GetAsync(reservationId);
+            var details = await _reservationDetailRepository.GetListAsync(x => x.ReservationId == reservationId);
+
+            if (details.Any())
+            {
+                reservation.StartTime = details.Min(x => x.StartTime);
+                reservation.EndTime = details.Max(x => x.EndTime);
+            }
+            else
+            {
+                reservation.StartTime = TimeSpan.Zero;
+                reservation.EndTime = TimeSpan.Zero;
+            }
+
+            await _reservationRepository.UpdateAsync(reservation);
+
+            await RecalculatePricesAsync(reservationId);
         }
 
-        public Task UpdateReservationDetailAsync(Guid reservationDetailId, UpdateReservationDetailDto input)
+        public async Task UpdateReservationDetailAsync(Guid reservationDetailId, UpdateReservationDetailDto input)
         {
-            throw new NotImplementedException();
+            var detail = await _reservationDetailRepository.GetAsync(reservationDetailId);
+            var reservation = await _reservationRepository.GetAsync(detail.ReservationId);
+            var service = await _serviceRepository.GetAsync(detail.ServiceId);
+
+            if (input.StartTime != detail.StartTime)
+            {
+                var dateTime = reservation.ReservationDate.Add(input.StartTime);
+                var available = await CheckAvailabilityAsync(detail.EmployeeId, dateTime, service.DurationMinutes);
+                if (!available)
+                {
+                    var employee = await _employeeRepository.GetAsync(detail.EmployeeId);
+                    throw new BusinessException($"{employee.FirstName} {employee.LastName} çalışanı belirtilen saatte müsait değil.");
+                }
+
+                detail.StartTime = input.StartTime;
+                detail.EndTime = input.StartTime.Add(TimeSpan.FromMinutes(service.DurationMinutes));
+            }
+
+            if (input.CustomPrice.HasValue)
+            {
+                detail.ServicePrice = input.CustomPrice.Value;
+                detail.CommissionAmount = detail.ServicePrice * detail.CommissionRate / 100;
+            }
+
+            detail.Note = input.Note;
+            await _reservationDetailRepository.UpdateAsync(detail);
+
+            var details = await _reservationDetailRepository.GetListAsync(x => x.ReservationId == reservation.Id);
+            reservation.StartTime = details.Min(x => x.StartTime);
+            reservation.EndTime = details.Max(x => x.EndTime);
+            await _reservationRepository.UpdateAsync(reservation);
+
+            await RecalculatePricesAsync(reservation.Id);
         }
 
-        public Task ApplyDiscountAsync(Guid reservationId, decimal discountAmount)
+        public async Task ApplyDiscountAsync(Guid reservationId, decimal discountAmount)
         {
-            throw new NotImplementedException();
+            var reservation = await _reservationRepository.GetAsync(reservationId);
+            reservation.DiscountAmount = (reservation.DiscountAmount ?? 0) + discountAmount;
+            await _reservationRepository.UpdateAsync(reservation);
+            await RecalculatePricesAsync(reservationId);
         }
 
-        public Task ApplyExtraChargeAsync(Guid reservationId, decimal extraAmount, string reason)
+        public async Task ApplyExtraChargeAsync(Guid reservationId, decimal extraAmount, string reason)
         {
-            throw new NotImplementedException();
+            var reservation = await _reservationRepository.GetAsync(reservationId);
+            reservation.ExtraAmount = (reservation.ExtraAmount ?? 0) + extraAmount;
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                reservation.Note = string.IsNullOrWhiteSpace(reservation.Note)
+                    ? reason
+                    : reservation.Note + " | " + reason;
+            }
+            await _reservationRepository.UpdateAsync(reservation);
+            await RecalculatePricesAsync(reservationId);
         }
 
-        public Task SendReminderAsync(Guid reservationId)
+        public async Task SendReminderAsync(Guid reservationId)
         {
-            throw new NotImplementedException();
+            var reservation = await _reservationRepository.GetAsync(reservationId);
+            reservation.ReminderSent = true;
+            await _reservationRepository.UpdateAsync(reservation);
         }
 
-        public Task SendBulkRemindersAsync(DateTime targetDate)
+        public async Task SendBulkRemindersAsync(DateTime targetDate)
         {
-            throw new NotImplementedException();
+            var list = await _reservationRepository.GetListAsync(x => x.ReservationDate.Date == targetDate.Date && !x.ReminderSent);
+            foreach (var reservation in list)
+            {
+                await SendReminderAsync(reservation.Id);
+            }
         }
 
-        public Task<DailyReservationReportDto> GetDailyReportAsync(DateTime date)
+        public async Task<DailyReservationReportDto> GetDailyReportAsync(DateTime date)
         {
-            throw new NotImplementedException();
+            var reservations = await _reservationRepository.GetListAsync(x => x.ReservationDate.Date == date.Date);
+            var report = new DailyReservationReportDto
+            {
+                Date = date,
+                TotalReservations = reservations.Count,
+                CompletedReservations = reservations.Count(x => x.Status == ReservationStatus.Arrived),
+                NoShowReservations = reservations.Count(x => x.Status == ReservationStatus.NoShow),
+                WalkInReservations = reservations.Count(x => x.IsWalkIn),
+                TotalRevenue = reservations.Sum(x => x.FinalPrice),
+                AverageReservationValue = reservations.Any() ? reservations.Average(x => x.FinalPrice) : 0
+            };
+
+            var ids = reservations.Select(r => r.Id).ToList();
+            var details = await _reservationDetailRepository.GetListAsync(x => ids.Contains(x.ReservationId));
+            var top = details.GroupBy(x => x.ServiceId)
+                .Select(g => new { ServiceId = g.Key, Count = g.Count(), Revenue = g.Sum(d => d.ServicePrice) })
+                .OrderByDescending(g => g.Count)
+                .Take(5)
+                .ToList();
+
+            foreach (var item in top)
+            {
+                var service = await _serviceRepository.FindAsync(item.ServiceId);
+                report.TopServices.Add(new ServicePerformanceDto
+                {
+                    ServiceId = item.ServiceId,
+                    ServiceName = service?.Title,
+                    Count = item.Count,
+                    Revenue = item.Revenue
+                });
+            }
+
+            return report;
         }
 
-        public Task<EmployeePerformanceReportDto> GetEmployeePerformanceAsync(Guid employeeId, DateTime startDate, DateTime endDate)
+        public async Task<EmployeePerformanceReportDto> GetEmployeePerformanceAsync(Guid employeeId, DateTime startDate, DateTime endDate)
         {
-            throw new NotImplementedException();
+            var employee = await _employeeRepository.GetAsync(employeeId);
+            var details = await _reservationDetailRepository.GetListAsync(x => x.EmployeeId == employeeId);
+            details = details.Where(d =>
+            {
+                var reservation = _reservationRepository.FindAsync(d.ReservationId).Result;
+                return reservation.ReservationDate >= startDate.Date && reservation.ReservationDate <= endDate.Date;
+            }).ToList();
+
+            var report = new EmployeePerformanceReportDto
+            {
+                EmployeeId = employeeId,
+                EmployeeName = $"{employee.FirstName} {employee.LastName}",
+                TotalReservations = details.Count,
+                TotalRevenue = details.Sum(x => x.ServicePrice),
+                TotalCommission = details.Sum(x => x.CommissionAmount)
+            };
+
+            var groups = details.GroupBy(x => x.ServiceId);
+            foreach (var g in groups)
+            {
+                var service = await _serviceRepository.FindAsync(g.Key);
+                report.Services.Add(new ServicePerformanceDto
+                {
+                    ServiceId = g.Key,
+                    ServiceName = service?.Title,
+                    Count = g.Count(),
+                    Revenue = g.Sum(d => d.ServicePrice)
+                });
+            }
+
+            return report;
         }
     }
 }
