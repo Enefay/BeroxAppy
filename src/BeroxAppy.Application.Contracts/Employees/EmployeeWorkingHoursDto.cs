@@ -18,8 +18,8 @@ namespace BeroxAppy.Employees
         public bool IsActive { get; set; } = true;
 
         // Display alanları
-        public string DayOfWeekDisplay { get; set; } // "Pazartesi", "Salı" vb.
-        public string WorkingHoursDisplay { get; set; } // "09:00 - 18:00"
-        public string BreakDisplay { get; set; } // "12:00 - 13:00" veya "Mola Yok"
+        public string? DayOfWeekDisplay { get; set; } // "Pazartesi", "Salı" vb.
+        public string? WorkingHoursDisplay { get; set; } // "09:00 - 18:00"
+        public string? BreakDisplay { get; set; } // "12:00 - 13:00" veya "Mola Yok"
     }
 }

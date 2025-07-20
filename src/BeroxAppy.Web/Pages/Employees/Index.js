@@ -2,6 +2,7 @@
     var l = abp.localization.getResource('BeroxAppy');
     var createModal = new abp.ModalManager(abp.appPath + 'Employees/CreateEditModal');
     var serviceAssignmentModal = new abp.ModalManager(abp.appPath + 'Employees/ServiceAssignmentModal');
+    var workingHoursModal = new abp.ModalManager(abp.appPath + 'Employees/WorkingHoursModal');
 
     var dataTable = $('#EmployeesTable').DataTable(
         abp.libs.datatables.normalizeConfiguration({
@@ -78,8 +79,7 @@
                                 text: 'Çalışma Saatleri',
                                 //visible: abp.auth.isGranted('BeroxAppy.Employees.Edit'),
                                 action: function (data) {
-                                    // Çalışma saatleri modalı buraya eklenebilir
-                                    abp.notify.info('Çalışma saatleri özelliği yakında eklenecek.');
+                                    workingHoursModal.open({ employeeId: data.record.id });
                                 }
                             },
                             {
@@ -259,6 +259,10 @@
     });
 
     serviceAssignmentModal.onResult(function () {
+        dataTable.ajax.reload();
+    });
+
+    workingHoursModal.onResult(function () {
         dataTable.ajax.reload();
     });
 

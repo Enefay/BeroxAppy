@@ -1,0 +1,97 @@
+﻿@page "/Employees/WorkingHoursModal"
+@model BeroxAppy.Web.Pages.Employees.WorkingHoursModalModel
+@{
+    Layout = null;
+}
+
+<form asp-page="/Employees/WorkingHoursModal" method="post" id="WorkingHoursForm">
+    <abp-modal size="Large" id="WorkingHoursModal">
+        <abp-modal-header title="@($"Çalışma Saatleri - {Model.EmployeeName}")">
+            <i class="fas fa-clock text-primary me-2"></i>
+        </abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="EmployeeId" id="EmployeeId" type="hidden" value="@Model.EmployeeId" />
+            <div class="mb-2 d-flex gap-2">
+                <button type="button" class="btn btn-outline-success btn-sm" id="activateAllDays">Tüm Günleri Aktif Et</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="deactivateAllDays">Tüm Günleri Pasif Yap</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="WorkingHoursTable">
+                    <thead>
+                        <tr>
+                            <th>Gün</th>
+                            <th>Başlangıç</th>
+                            <th>Bitiş</th>
+                            <th>Mola</th>
+                            <th>Aktif</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var day in Model.DaysOfWeek)
+                        {
+                            // ----------- LINQ YOK, klasik döngü ile bul! -----------
+                            BeroxAppy.Employees.EmployeeWorkingHoursDto wh = null;
+                            foreach (var item in Model.WorkingHours)
+                            {
+                                if (item.DayOfWeek == day.Key)
+                                {
+                                    wh = item;
+                                    break;
+                                }
+                            }
+                            if (wh == null)
+                            {
+                                wh = new BeroxAppy.Employees.EmployeeWorkingHoursDto
+                    {
+                        DayOfWeek = day.Key,
+                        StartTime = new TimeSpan(9, 0, 0),
+                        EndTime = new TimeSpan(18, 0, 0),
+                        IsActive = false
+                    };
+                            }
+                            // --------------------------------------------------------
+
+                            <tr data-day="@((int)day.Key)">
+                                <td>@day.Value</td>
+                                <td>
+                                    <input type="time" class="form-control form-control-sm start-time"
+                                           value="@wh.StartTime.ToString(@"hh\:mm")"
+                                    @(wh.IsActive ? "" : "disabled") />
+                                </td>
+                                <td>
+                                    <input type="time" class="form-control form-control-sm end-time"
+                                           value="@wh.EndTime.ToString(@"hh\:mm")"
+                                    @(wh.IsActive ? "" : "disabled") />
+                                </td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <input type="time" class="form-control break-start"
+                                               value="@(wh.BreakStartTime.HasValue ? wh.BreakStartTime.Value.ToString(@"hh\:mm") : "")"
+                                               placeholder="Başlangıç" @(wh.IsActive ? "" : "disabled") />
+                                        <span class="input-group-text">-</span>
+                                        <input type="time" class="form-control break-end"
+                                               value="@(wh.BreakEndTime.HasValue ? wh.BreakEndTime.Value.ToString(@"hh\:mm") : "")"
+                                               placeholder="Bitiş" @(wh.IsActive ? "" : "disabled") />
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input is-active" @(wh.IsActive ? "checked" : "") />
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-link btn-sm copy-day" title="Bu günü diğerlerine uygula">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </abp-modal-body>
+        <abp-modal-footer>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            <button type="button" class="btn btn-primary" id="SaveWorkingHoursBtn">Kaydet</button>
+        </abp-modal-footer>
+    </abp-modal>
+</form>
