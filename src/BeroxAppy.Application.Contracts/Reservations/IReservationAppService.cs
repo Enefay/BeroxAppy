@@ -89,7 +89,7 @@ namespace BeroxAppy.Reservations
         /// <summary>
         /// Yaklaşan rezervasyonlar (1-2 saat içinde)
         /// </summary>
-        Task<List<ReservationDto>> GetUpcomingReservationsAsync(int hoursAhead = 2);
+        Task<List<ReservationDto>> GetUpcomingReservationsAsync(int? hoursAhead = 2);
 
         /// <summary>
         /// Müşterinin rezervasyon geçmişi

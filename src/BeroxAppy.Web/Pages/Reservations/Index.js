@@ -1,9 +1,10 @@
 ﻿var reservations = reservations || {};
 
+var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEditModal');
+
 (function () {
     let calendar;
     let currentReservation = null;
-    let serviceRowIndex = 0;
 
     // Sayfa yüklendiğinde
     $(function () {
@@ -118,20 +119,13 @@
             }
         });
 
-        // Hizmet ekle
-        $('#addServiceBtn').click(function () {
-            addServiceRow();
-        });
-
-        // Rezervasyon kaydet
-        $('#saveReservationBtn').click(function () {
-            saveReservation();
-        });
-
         // Rezervasyon düzenle
-        $('#editReservationBtn').click(function () {
+        $(document).on('click', '#editReservationBtn', function () {
             const reservationId = $(this).data('reservation-id');
-            editReservation(reservationId);
+            $('#reservationDetailModal').modal('hide');
+            setTimeout(() => {
+                editReservation(reservationId);
+            }, 500); // Modal kapanma animasyonunu bekle
         });
 
         // Geldi işaretle
@@ -145,206 +139,15 @@
             const reservationId = $(this).data('reservation-id');
             updateReservationStatus(reservationId, 1); // NoShow = 1
         });
-
-        // Tarih değiştiğinde müsait saatleri güncelle
-        $('#reservationDate').change(function () {
-            updateAvailableSlots();
-        });
-
-        // Fiyat hesaplama
-        $('#discountAmount, #extraAmount').on('input', calculateTotalPrice);
     }
 
     // Rezervasyon modalını aç
     function openReservationModal(isWalkIn = false) {
-        currentReservation = null;
-        $('#reservationForm')[0].reset();
-        $('#reservationId').val('');
-        $('#servicesContainer').empty();
-        $('#isWalkIn').prop('checked', isWalkIn);
-        $('#reservationModalTitle').text(isWalkIn ? 'Yeni Adisyon' : 'Yeni Rezervasyon');
-
-        // Bugünün tarihini set et
-        const today = new Date().toISOString().split('T')[0];
-        $('#reservationDate').val(today);
-
-        // İlk hizmet satırını ekle
-        addServiceRow();
-
-        $('#reservationModal').modal('show');
+        createEditModal.open({ id: null });
     }
 
-    // Hizmet satırı ekle
-    function addServiceRow() {
-        const template = document.getElementById('serviceRowTemplate');
-        const clone = template.content.cloneNode(true);
-        const row = $(clone.querySelector('.service-row'));
-
-        row.attr('data-index', serviceRowIndex++);
-
-        // Event'leri bağla
-        row.find('.service-select').change(function () {
-            onServiceChange($(this));
-        });
-
-        row.find('.employee-select').change(function () {
-            onEmployeeChange($(this));
-        });
-
-        row.find('.remove-service-btn').click(function () {
-            if ($('#servicesContainer .service-row').length > 1) {
-                row.remove();
-                calculateTotalPrice();
-            } else {
-                abp.notify.warn('En az bir hizmet olmalıdır!');
-            }
-        });
-
-        $('#servicesContainer').append(row);
-    }
-
-    // Hizmet değiştiğinde
-    function onServiceChange(selectElement) {
-        const serviceId = selectElement.val();
-        const row = selectElement.closest('.service-row');
-        const employeeSelect = row.find('.employee-select');
-
-        if (!serviceId) {
-            employeeSelect.html('<option value="">Önce Hizmet Seçin</option>');
-            return;
-        }
-
-        // Hizmeti verebilen çalışanları getir
-        $.ajax({
-            url: '/Reservations?handler=EmployeesByService',
-            type: 'GET',
-            data: { serviceId: serviceId },
-            success: function (employees) {
-                employeeSelect.html('<option value="">Çalışan Seçin</option>');
-                employees.forEach(emp => {
-                    employeeSelect.append(`<option value="${emp.id}">${emp.fullName}</option>`);
-                });
-            }
-        });
-
-        // Fiyatı güncelle
-        const selectedOption = selectElement.find('option:selected');
-        const priceMatch = selectedOption.text().match(/₺([\d,]+)/);
-        if (priceMatch) {
-            const price = parseFloat(priceMatch[1].replace(',', '.'));
-            row.find('.service-price').val(price);
-            calculateTotalPrice();
-        }
-    }
-
-    // Çalışan değiştiğinde
-    function onEmployeeChange(selectElement) {
-        const employeeId = selectElement.val();
-        const row = selectElement.closest('.service-row');
-        const serviceId = row.find('.service-select').val();
-        const date = $('#reservationDate').val();
-
-        if (!employeeId || !serviceId || !date) {
-            row.find('.time-select').html('<option value="">Önce Çalışan Seçin</option>');
-            return;
-        }
-
-        // Müsait saatleri getir
-        $.ajax({
-            url: '/Reservations?handler=AvailableSlots',
-            type: 'GET',
-            data: {
-                employeeId: employeeId,
-                serviceId: serviceId,
-                date: date
-            },
-            success: function (data) {
-                const timeSelect = row.find('.time-select');
-                timeSelect.html('<option value="">Saat Seçin</option>');
-
-                data.availableSlots.forEach(slot => {
-                    if (slot.isAvailable) {
-                        timeSelect.append(`<option value="${slot.startTime}">${slot.display}</option>`);
-                    }
-                });
-            }
-        });
-    }
-
-    // Rezervasyon kaydet
-    function saveReservation() {
-        const form = $('#reservationForm');
-        if (!form[0].checkValidity()) {
-            form[0].reportValidity();
-            return;
-        }
-
-        // Hizmet detaylarını topla
-        const reservationDetails = [];
-        let isValid = true;
-
-        $('#servicesContainer .service-row').each(function () {
-            const row = $(this);
-            const serviceId = row.find('.service-select').val();
-            const employeeId = row.find('.employee-select').val();
-            const startTime = row.find('.time-select').val();
-            const customPrice = row.find('.service-price').val();
-            const note = row.find('.service-note').val();
-
-            if (!serviceId || !employeeId || !startTime) {
-                isValid = false;
-                abp.notify.error('Lütfen tüm hizmet detaylarını doldurun!');
-                return false;
-            }
-
-            reservationDetails.push({
-                serviceId: serviceId,
-                employeeId: employeeId,
-                startTime: startTime,
-                customPrice: customPrice ? parseFloat(customPrice) : null,
-                note: note
-            });
-        });
-
-        if (!isValid) return;
-
-        const data = {
-            customerId: $('#customerId').val(),
-            note: $('#note').val(),
-            reservationDate: $('#reservationDate').val(),
-            discountAmount: $('#discountAmount').val() ? parseFloat($('#discountAmount').val()) : null,
-            extraAmount: $('#extraAmount').val() ? parseFloat($('#extraAmount').val()) : null,
-            isWalkIn: $('#isWalkIn').is(':checked'),
-            reservationDetails: reservationDetails
-        };
-
-        const reservationId = $('#reservationId').val();
-        const url = reservationId
-            ? `/api/app/reservation/${reservationId}`
-            : '/api/app/reservation';
-        const method = reservationId ? 'PUT' : 'POST';
-
-        abp.ui.setBusy('#reservationModal');
-
-        $.ajax({
-            url: url,
-            type: method,
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function () {
-                $('#reservationModal').modal('hide');
-                calendar.refetchEvents();
-                loadDailySummary();
-                loadUpcomingReservations();
-                abp.notify.success('Rezervasyon başarıyla kaydedildi!');
-            },
-            error: function (xhr) {
-                abp.notify.error('Rezervasyon kaydedilemedi!');
-            },
-            complete: function () {
-                abp.ui.clearBusy('#reservationModal');
-            }
-        });
+    function editReservation(reservationId) {
+        createEditModal.open({ id: reservationId });
     }
 
     // Event'e tıklandığında
@@ -364,48 +167,48 @@
     // Rezervasyon detaylarını göster
     function showReservationDetails(reservation) {
         let detailsHtml = `
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Müşteri:</strong> ${reservation.customerName}<br/>
-                    <strong>Telefon:</strong> ${reservation.customerPhone}<br/>
-                    <strong>Tarih:</strong> ${new Date(reservation.reservationDate).toLocaleDateString('tr-TR')}<br/>
-                    <strong>Saat:</strong> ${reservation.reservationTimeDisplay}
-                </div>
-                <div class="col-md-6">
-                    <strong>Durum:</strong> <span class="badge bg-${getStatusBadgeColor(reservation.status)}">${reservation.statusDisplay}</span><br/>
-                    <strong>Ödeme:</strong> <span class="badge bg-${getPaymentBadgeColor(reservation.paymentStatus)}">${reservation.paymentStatusDisplay}</span><br/>
-                    <strong>Tip:</strong> ${reservation.reservationTypeDisplay}<br/>
-                    <strong>Toplam:</strong> ₺${reservation.finalPrice.toFixed(2)}
-                </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Müşteri:</strong> ${reservation.customerName}<br/>
+                <strong>Telefon:</strong> ${reservation.customerPhone}<br/>
+                <strong>Tarih:</strong> ${new Date(reservation.reservationDate).toLocaleDateString('tr-TR')}<br/>
+                <strong>Saat:</strong> ${reservation.reservationTimeDisplay}
             </div>
-            
-            <h6 class="mt-3">Hizmetler</h6>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Hizmet</th>
-                            <th>Çalışan</th>
-                            <th>Saat</th>
-                            <th>Fiyat</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
+            <div class="col-md-6">
+                <strong>Durum:</strong> <span class="badge bg-${getStatusBadgeColor(reservation.status)}">${reservation.statusDisplay}</span><br/>
+                <strong>Ödeme:</strong> <span class="badge bg-${getPaymentBadgeColor(reservation.paymentStatus)}">${reservation.paymentStatusDisplay}</span><br/>
+                <strong>Tip:</strong> ${reservation.reservationTypeDisplay}<br/>
+                <strong>Toplam:</strong> ₺${reservation.finalPrice.toFixed(2)}
+            </div>
+        </div>
+        
+        <h6 class="mt-3">Hizmetler</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Hizmet</th>
+                        <th>Çalışan</th>
+                        <th>Saat</th>
+                        <th>Fiyat</th>
+                    </tr>
+                </thead>
+                <tbody>`;
 
         reservation.reservationDetails.forEach(detail => {
             detailsHtml += `
-                <tr>
-                    <td>${detail.serviceTitle}</td>
-                    <td>${detail.employeeName}</td>
-                    <td>${detail.timeDisplay}</td>
-                    <td>₺${detail.servicePrice.toFixed(2)}</td>
-                </tr>`;
+            <tr>
+                <td>${detail.serviceTitle}</td>
+                <td>${detail.employeeName}</td>
+                <td>${detail.timeDisplay}</td>
+                <td>₺${detail.servicePrice.toFixed(2)}</td>
+            </tr>`;
         });
 
         detailsHtml += `
-                    </tbody>
-                </table>
-            </div>`;
+                </tbody>
+            </table>
+        </div>`;
 
         if (reservation.note) {
             detailsHtml += `<div class="mt-3"><strong>Not:</strong> ${reservation.note}</div>`;
@@ -428,14 +231,8 @@
 
     // Tarih seçimi
     function handleDateSelect(selectInfo) {
-        const start = selectInfo.start;
-        const allDay = selectInfo.allDay;
-
-        if (!allDay) {
-            $('#reservationDate').val(start.toISOString().split('T')[0]);
-            openReservationModal();
-            calendar.unselect();
-        }
+        createEditModal.open({ id: null });
+        calendar.unselect();
     }
 
     // Event sürükleme
@@ -520,7 +317,7 @@
     // Yaklaşan rezervasyonları yükle
     function loadUpcomingReservations() {
         $.ajax({
-            url: '/api/app/reservation/upcoming',
+            url: '/api/app/reservation/upcoming-reservations/2',
             type: 'GET',
             success: function (data) {
                 if (data.length === 0) {
@@ -552,23 +349,6 @@
                 $('#upcomingReservations').html(html);
             }
         });
-    }
-
-    // Toplam fiyatı hesapla
-    function calculateTotalPrice() {
-        let total = 0;
-
-        $('.service-price').each(function () {
-            const price = parseFloat($(this).val()) || 0;
-            total += price;
-        });
-
-        const discount = parseFloat($('#discountAmount').val()) || 0;
-        const extra = parseFloat($('#extraAmount').val()) || 0;
-
-        total = total - discount + extra;
-
-        $('#totalAmount').val('₺' + total.toFixed(2));
     }
 
     // Durum badge rengi
@@ -603,5 +383,12 @@
             }
         });
     };
+
+    createEditModal.onResult(function () {
+        calendar.refetchEvents();
+        loadDailySummary();
+        loadUpcomingReservations();
+        abp.notify.success('Rezervasyon başarıyla kaydedildi!');
+    });
 
 })();

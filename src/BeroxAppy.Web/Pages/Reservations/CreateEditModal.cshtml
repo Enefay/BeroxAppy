@@ -1,4 +1,369 @@
 ﻿@page
-@model BeroxAppy.Web.Pages.Reservations.CreateEditModalModel
+@using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Localization
+@using BeroxAppy.Web.Pages.Reservations
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@model CreateEditModalModel
+@inject IHtmlLocalizer<BeroxAppyResource> L
 @{
+    Layout = null;
 }
+
+    <script>
+        $(function () {
+            let serviceRowIndex = 0;
+
+            // Modal açıldığında çalışacak fonksiyon
+            initializeModal();
+
+            function initializeModal() {
+                // İlk hizmet satırını ekle (eğer yoksa)
+                if ($('#servicesContainer .service-row').length === 0) {
+                    addServiceRow();
+                }
+
+                // Event'leri bağla
+                bindModalEvents();
+
+                // İlk hesaplama
+                setTimeout(calculateTotalPrice, 100);
+            }
+
+            function bindModalEvents() {
+                // Hizmet ekle - event delegation kullan
+                $(document).off('click', '#addServiceBtn').on('click', '#addServiceBtn', function () {
+                    addServiceRow();
+                });
+
+                // Tarih değiştiğinde müsait saatleri güncelle
+                $(document).off('change', '#reservationDate').on('change', '#reservationDate', function () {
+                    updateAvailableSlots();
+                });
+
+                // Fiyat hesaplama
+                $(document).off('input', '#discountAmount, #extraAmount').on('input', '#discountAmount, #extraAmount', calculateTotalPrice);
+            }
+
+            // Hizmet satırı ekle
+            function addServiceRow() {
+                const template = document.getElementById('serviceRowTemplate');
+                if (!template) {
+                    console.error('Service row template not found!');
+                    return;
+                }
+
+                const clone = template.content.cloneNode(true);
+                const row = $(clone.querySelector('.service-row'));
+
+                // Unique index ata
+                const currentIndex = serviceRowIndex++;
+                row.attr('data-index', currentIndex);
+
+                // Event'leri bağla - event delegation ile
+                bindServiceRowEvents(row);
+
+                $('#servicesContainer').append(row);
+
+                // İlk hizmet seçildiyse fiyat hesapla
+                calculateTotalPrice();
+            }
+
+            // Hizmet satırı eventlerini bağla
+            function bindServiceRowEvents(row) {
+                // Hizmet değişikliği
+                row.find('.service-select').on('change', function () {
+                    onServiceChange($(this));
+                });
+
+                // Çalışan değişikliği
+                row.find('.employee-select').on('change', function () {
+                    onEmployeeChange($(this));
+                });
+
+                // Fiyat değişikliği
+                row.find('.service-price').on('input', function() {
+                    calculateTotalPrice();
+                });
+
+                // Silme butonu
+                row.find('.remove-service-btn').on('click', function () {
+                    if ($('#servicesContainer .service-row').length > 1) {
+                        row.remove();
+                        calculateTotalPrice();
+                    } else {
+                        abp.notify.warn('En az bir hizmet olmalıdır!');
+                    }
+                });
+            }
+
+            // Hizmet değiştiğinde
+            function onServiceChange(selectElement) {
+                const serviceId = selectElement.val();
+                const row = selectElement.closest('.service-row');
+                const employeeSelect = row.find('.employee-select');
+
+                if (!serviceId) {
+                    employeeSelect.html('<option value="">Önce Hizmet Seçin</option>');
+                    row.find('.time-select').html('<option value="">Önce Çalışan Seçin</option>');
+                    row.find('.service-price').val('');
+                    calculateTotalPrice();
+                    return;
+                }
+
+                // Loading state
+                employeeSelect.html('<option value="">Yükleniyor...</option>');
+
+                // Hizmeti verebilen çalışanları getir
+                $.ajax({
+                    url: '/Reservations/CreateEditModal?handler=EmployeesByService',
+                    type: 'GET',
+                    data: { serviceId: serviceId },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (employees) {
+                        employeeSelect.html('<option value="">Çalışan Seçin</option>');
+                        if (employees && employees.length > 0) {
+                            employees.forEach(emp => {
+                                employeeSelect.append(`<option value="${emp.id}">${emp.fullName}</option>`);
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Çalışan listesi yüklenemedi:', error);
+                        employeeSelect.html('<option value="">Hata oluştu</option>');
+                        abp.notify.error('Çalışan listesi yüklenemedi!');
+                    }
+                });
+
+                // Fiyatı güncelle - Türkçe para birimi formatı için
+                const selectedOption = selectElement.find('option:selected');
+                const serviceText = selectedOption.text();
+
+                // Fiyat regex'i - hem ₺ hem TL formatını destekler
+                const priceRegex = /(?:₺|TL)\s?([\d,.]+)/i;
+                const priceMatch = serviceText.match(priceRegex);
+
+                if (priceMatch) {
+                    // Türkçe sayı formatını parse et (1.234,56 -> 1234.56)
+                    const priceStr = priceMatch[1].replace(/\./g, '').replace(',', '.');
+                    const price = parseFloat(priceStr);
+
+                    if (!isNaN(price)) {
+                        row.find('.service-price').val(price.toFixed(2));
+                        calculateTotalPrice();
+                    }
+                }
+            }
+
+            // Çalışan değiştiğinde
+            function onEmployeeChange(selectElement) {
+                const employeeId = selectElement.val();
+                const row = selectElement.closest('.service-row');
+                const serviceId = row.find('.service-select').val();
+                const date = $('#reservationDate').val();
+                const timeSelect = row.find('.time-select');
+
+                if (!employeeId || !serviceId || !date) {
+                    timeSelect.html('<option value="">Önce tüm alanları doldurun</option>');
+                    return;
+                }
+
+                // Loading state
+                timeSelect.html('<option value="">Müsait saatler yükleniyor...</option>');
+
+                // Müsait saatleri getir
+                $.ajax({
+                    url: '/Reservations/CreateEditModal?handler=AvailableSlots',
+                    type: 'GET',
+                    data: {
+                        employeeId: employeeId,
+                        serviceId: serviceId,
+                        date: date
+                    },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        timeSelect.html('<option value="">Saat Seçin</option>');
+
+                        if (response && response.availableSlots && response.availableSlots.length > 0) {
+                            response.availableSlots.forEach(slot => {
+                                if (slot.isAvailable) {
+                                    timeSelect.append(`<option value="${slot.startTime}">${slot.display}</option>`);
+                                }
+                            });
+                        } else {
+                            timeSelect.html('<option value="">Müsait saat yok</option>');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Müsait saatler yüklenemedi:', error);
+                        timeSelect.html('<option value="">Hata oluştu</option>');
+                        abp.notify.error('Müsait saatler yüklenemedi!');
+                    }
+                });
+            }
+
+            // Toplam fiyatı hesapla
+            function calculateTotalPrice() {
+                let total = 0;
+
+                $('.service-price').each(function () {
+                    const price = parseFloat($(this).val()) || 0;
+                    total += price;
+                });
+
+                const discount = parseFloat($('#discountAmount').val()) || 0;
+                const extra = parseFloat($('#extraAmount').val()) || 0;
+
+                total = Math.max(0, total - discount + extra);
+
+                $('#totalAmount').val('₺' + total.toFixed(2));
+            }
+
+            function updateAvailableSlots() {
+                $('#servicesContainer .service-row').each(function () {
+                    const row = $(this);
+                    const employeeSelect = row.find('.employee-select');
+                    if (employeeSelect.val()) {
+                        onEmployeeChange(employeeSelect);
+                    }
+                });
+            }
+
+            // Modal kapatıldığında temizlik yap
+            $('#createEditModal').on('hidden.bs.modal', function () {
+                $('#servicesContainer').empty();
+                serviceRowIndex = 0;
+            });
+
+            // Modal açıldığında yeniden initialize et
+            $('#createEditModal').on('shown.bs.modal', function () {
+                initializeModal();
+            });
+        });
+    </script>
+
+<form asp-page="/Reservations/CreateEditModal">
+    <abp-modal size="Large">
+        <abp-modal-header title="@(Model.Reservation?.Id == Guid.Empty ? "Yeni Rezervasyon" : "Rezervasyon Düzenle")"></abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="Reservation.Id" type="hidden" />
+
+            <!-- Müşteri Seçimi -->
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <label class="form-label" asp-for="Reservation.CustomerId">Müşteri *</label>
+                    <select asp-for="Reservation.CustomerId" class="form-select" required>
+                        <option value="">Müşteri Seçin</option>
+                        @foreach (var customer in Model.Customers)
+                        {
+                            <option value="@customer.Value">@customer.Text</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Reservation.CustomerId" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Reservation.ReservationDate">Tarih *</label>
+                    <input type="date" asp-for="Reservation.ReservationDate" class="form-control" required />
+                    <span asp-validation-for="Reservation.ReservationDate" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Hizmet Detayları -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Hizmetler</h6>
+                    <button type="button" class="btn btn-sm btn-primary" id="addServiceBtn">
+                        <i class="fas fa-plus"></i> Hizmet Ekle
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="servicesContainer">
+                        <!-- Dinamik olarak hizmetler eklenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fiyat Bilgileri -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Reservation.DiscountAmount">İndirim (₺)</label>
+                    <input type="number" asp-for="Reservation.DiscountAmount" class="form-control" min="0" step="0.01" />
+                    <span asp-validation-for="Reservation.DiscountAmount" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Reservation.ExtraAmount">Ekstra Ücret (₺)</label>
+                    <input type="number" asp-for="Reservation.ExtraAmount" class="form-control" min="0" step="0.01" />
+                    <span asp-validation-for="Reservation.ExtraAmount" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Toplam Tutar</label>
+                    <input type="text" id="totalAmount" class="form-control" readonly />
+                </div>
+            </div>
+
+            <!-- Not -->
+            <div class="mb-3">
+                <label class="form-label" asp-for="Reservation.Note">Not</label>
+                <textarea asp-for="Reservation.Note" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Reservation.Note" class="text-danger"></span>
+            </div>
+
+            <!-- Walk-in Checkbox -->
+            <div class="form-check">
+                <input type="checkbox" asp-for="Reservation.IsWalkIn" class="form-check-input" />
+                <label class="form-check-label" asp-for="Reservation.IsWalkIn">
+                    Adisyon (Walk-in Müşteri)
+                </label>
+            </div>
+
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>
+
+<!-- Hizmet Satırı Template -->
+<template id="serviceRowTemplate">
+    <div class="service-row mb-3 p-3 border rounded">
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Hizmet</label>
+                <select class="form-select service-select" required>
+                    <option value="">Hizmet Seçin</option>
+                    @foreach (var service in Model.Services)
+                    {
+                        <option value="@service.Value">@service.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Çalışan</label>
+                <select class="form-select employee-select" required>
+                    <option value="">Önce Hizmet Seçin</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Saat</label>
+                <select class="form-select time-select" required>
+                    <option value="">Önce Çalışan Seçin</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fiyat (₺)</label>
+                <input type="number" class="form-control service-price" min="0" step="0.01" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-sm btn-danger remove-service-btn">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <input type="text" class="form-control service-note" placeholder="Hizmet notu (opsiyonel)" />
+            </div>
+        </div>
+    </div>
+</template>

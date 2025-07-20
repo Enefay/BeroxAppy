@@ -30,7 +30,6 @@
                     <tbody>
                         @foreach (var day in Model.DaysOfWeek)
                         {
-                            // ----------- LINQ YOK, klasik döngü ile bul! -----------
                             BeroxAppy.Employees.EmployeeWorkingHoursDto wh = null;
                             foreach (var item in Model.WorkingHours)
                             {

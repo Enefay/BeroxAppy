@@ -754,10 +754,11 @@ namespace BeroxAppy.Reservations
             return result;
         }
 
-        public async Task<List<ReservationDto>> GetUpcomingReservationsAsync(int hoursAhead = 2)
+        //todo
+        public async Task<List<ReservationDto>> GetUpcomingReservationsAsync(int? hoursAhead = 2)
         {
             var now = DateTime.Now;
-            var target = now.AddHours(hoursAhead);
+            var target = now.AddHours((int)hoursAhead);
 
             var queryable = await _reservationRepository.GetQueryableAsync();
             var reservations = queryable
