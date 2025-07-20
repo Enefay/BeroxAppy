@@ -1,31 +1,13 @@
-﻿// Pages/Employees/Index.js
-$(function () {
-
-    var createModal = new abp.ModalManager({
-        viewUrl: abp.appPath + 'Employees/CreateEditModal',
-        modalClass: 'EmployeeCreateEditModal'
-    });
-
-    var editModal = new abp.ModalManager({
-        viewUrl: abp.appPath + 'Employees/CreateEditModal',
-        modalClass: 'EmployeeCreateEditModal'
-    });
-
-    var workingHoursModal = new abp.ModalManager({
-        viewUrl: abp.appPath + 'Employees/WorkingHoursModal',
-        modalClass: 'EmployeeWorkingHoursModal'
-    });
-
-    var serviceAssignmentModal = new abp.ModalManager({
-        viewUrl: abp.appPath + 'Employees/ServiceAssignmentModal',
-        modalClass: 'EmployeeServiceAssignmentModal'
-    });
+﻿$(function () {
+    var l = abp.localization.getResource('BeroxAppy');
+    var createModal = new abp.ModalManager(abp.appPath + 'Employees/CreateEditModal');
+    var serviceAssignmentModal = new abp.ModalManager(abp.appPath + 'Employees/ServiceAssignmentModal');
 
     var dataTable = $('#EmployeesTable').DataTable(
         abp.libs.datatables.normalizeConfiguration({
             serverSide: true,
             paging: true,
-            order: [[1, "asc"]], // FullName'e göre sırala
+            order: [[1, "asc"]],
             searching: true,
             scrollX: true,
             ajax: function (data, callback, settings) {
@@ -80,83 +62,37 @@ $(function () {
                         items: [
                             {
                                 text: 'Düzenle',
-                                iconStyle: 'fas fa-edit',
+                                //visible: abp.auth.isGranted('BeroxAppy.Employees.Edit'),
                                 action: function (data) {
-                                    editModal.open({ id: data.record.id });
+                                    createModal.open({ id: data.record.id });
                                 }
                             },
                             {
-                                text: 'Çalışma Saatleri',
-                                iconStyle: 'fas fa-clock',
-                                action: function (data) {
-                                    workingHoursModal.open({ employeeId: data.record.id });
-                                }
-                            },
-                            {
-                                text: 'Hizmet Atama',
-                                iconStyle: 'fas fa-tasks',
+                                text: 'Hizmet Ata',
+                                //visible: abp.auth.isGranted('BeroxAppy.Employees.Edit'),
                                 action: function (data) {
                                     serviceAssignmentModal.open({ employeeId: data.record.id });
                                 }
                             },
                             {
-                                text: 'Telefon Et',
-                                iconStyle: 'fas fa-phone',
+                                text: 'Çalışma Saatleri',
+                                //visible: abp.auth.isGranted('BeroxAppy.Employees.Edit'),
                                 action: function (data) {
-                                    window.open('tel:' + data.record.phone);
-                                }
-                            },
-                            {
-                                text: function (data) {
-                                    return data.hasUser ? 'Kullanıcı Yönetimi' : 'Kullanıcı Oluştur';
-                                },
-                                iconStyle: function (data) {
-                                    return data.hasUser ? 'fas fa-user-cog' : 'fas fa-user-plus';
-                                },
-                                action: function (data) {
-                                    if (data.record.hasUser) {
-                                        showUserManagementMenu(data.record);
-                                    } else {
-                                        createUserForEmployee(data.record.id);
-                                    }
-                                }
-                            },
-                            {
-                                text: function (data) {
-                                    return data.isActive ? 'Pasif Yap' : 'Aktif Yap';
-                                },
-                                iconStyle: function (data) {
-                                    return data.isActive ? 'fas fa-eye-slash' : 'fas fa-eye';
-                                },
-                                action: function (data) {
-                                    var newStatus = !data.record.isActive;
-                                    var message = newStatus ? 'aktif' : 'pasif';
-
-                                    abp.message.confirm(
-                                        'Bu çalışanı ' + message + ' yapmak istediğinizden emin misiniz?'
-                                    ).then(function (confirmed) {
-                                        if (confirmed) {
-                                            beroxAppy.employees.employee
-                                                .setActiveStatus(data.record.id, newStatus)
-                                                .then(function () {
-                                                    abp.notify.success('Çalışan durumu güncellendi');
-                                                    dataTable.ajax.reload();
-                                                });
-                                        }
-                                    });
+                                    // Çalışma saatleri modalı buraya eklenebilir
+                                    abp.notify.info('Çalışma saatleri özelliği yakında eklenecek.');
                                 }
                             },
                             {
                                 text: 'Sil',
-                                iconStyle: 'fas fa-trash',
+                                visible: abp.auth.isGranted('BeroxAppy.Employees.Delete'),
                                 confirmMessage: function (data) {
-                                    return 'Bu çalışanı silmek istediğinizden emin misiniz? Çalışan: ' + data.record.fullName;
+                                    return 'Bu çalışanı silmek istediğinizden emin misiniz: ' + data.record.fullName;
                                 },
                                 action: function (data) {
                                     beroxAppy.employees.employee
                                         .delete(data.record.id)
                                         .then(function () {
-                                            abp.notify.success('Çalışan başarıyla silindi');
+                                            abp.notify.success('Çalışan başarıyla silindi.');
                                             dataTable.ajax.reload();
                                         });
                                 }
@@ -180,162 +116,125 @@ $(function () {
                     }
                 },
                 {
-                    title: 'Telefon',
+                    title: 'İletişim',
                     data: "phone",
-                    render: function (data) {
-                        return '<a href="tel:' + data + '" class="text-decoration-none">' +
-                            '<i class="fas fa-phone text-success me-1"></i>' + data + '</a>';
-                    }
-                },
-                {
-                    title: 'Email',
-                    data: "email",
-                    render: function (data) {
-                        if (data) {
-                            return '<a href="mailto:' + data + '" class="text-decoration-none">' +
-                                '<i class="fas fa-envelope text-info me-1"></i>' + data + '</a>';
-                        }
-                        return '<span class="text-muted">-</span>';
-                    }
-                },
-                {
-                    title: 'Tip',
-                    data: "employeeTypeDisplay",
                     render: function (data, type, row) {
-                        var badgeClass = '';
-                        switch (row.employeeType) {
-                            case 0: badgeClass = 'bg-primary'; break;   // Staff
-                            case 1: badgeClass = 'bg-info'; break;      // Secretary
-                            case 2: badgeClass = 'bg-warning'; break;   // Manager
-                            case 3: badgeClass = 'bg-secondary'; break; // Device
+                        var html = '<i class="fas fa-phone text-primary"></i> ' + data;
+                        if (row.email) {
+                            html += '<br><i class="fas fa-envelope text-info"></i> ' + row.email;
                         }
-                        return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                        return html;
                     }
                 },
                 {
-                    title: 'Hizmet Cinsiyeti',
+                    title: 'Hizmet Cinsiyet',
                     data: "serviceGenderDisplay",
-                    render: function (data, type, row) {
-                        var badgeClass = '';
-                        switch (row.serviceGender) {
-                            case 0: badgeClass = 'bg-secondary'; break; // Unisex
-                            case 1: badgeClass = 'bg-primary'; break;   // Male
-                            case 2: badgeClass = 'bg-danger'; break;    // Female
+                    render: function (data) {
+                        var colorClass = '';
+                        switch (data) {
+                            case 'Erkek':
+                                colorClass = 'bg-primary';
+                                break;
+                            case 'Kadın':
+                                colorClass = 'bg-danger';
+                                break;
+                            case 'Unisex':
+                                colorClass = 'bg-success';
+                                break;
+                            default:
+                                colorClass = 'bg-secondary';
                         }
-                        return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                        return '<span class="badge ' + colorClass + '">' + data + '</span>';
                     }
                 },
                 {
                     title: 'Maaş',
                     data: "fixedSalary",
                     render: function (data) {
-                        if (data > 0) {
-                            return '<strong>₺' + data.toLocaleString('tr-TR', { minimumFractionDigits: 0 }) + '</strong>';
-                        }
-                        return '<span class="text-muted">-</span>';
+                        return '₺' + data.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
                     }
                 },
                 {
                     title: 'Komisyon',
-                    data: null,
-                    orderable: false,
+                    data: "serviceCommissionRate",
                     render: function (data, type, row) {
-                        var html = '<div>';
-                        if (row.serviceCommissionRate > 0) {
-                            html += '<small class="badge bg-info me-1">H: %' + row.serviceCommissionRate + '</small>';
-                        }
-                        if (row.productCommissionRate > 0) {
-                            html += '<small class="badge bg-warning me-1">Ü: %' + row.productCommissionRate + '</small>';
-                        }
-                        if (row.packageCommissionRate > 0) {
-                            html += '<small class="badge bg-success me-1">P: %' + row.packageCommissionRate + '</small>';
-                        }
-                        if (html === '<div>') {
-                            html += '<span class="text-muted">-</span>';
-                        }
-                        html += '</div>';
-                        return html;
+                        return 'H: %' + data + '<br>' +
+                            'Ü: %' + row.productCommissionRate + '<br>' +
+                            'P: %' + row.packageCommissionRate;
                     }
                 },
                 {
                     title: 'Kullanıcı',
                     data: "userStatus",
                     render: function (data, type, row) {
-                        var badgeClass = '';
-                        var icon = '';
+                        var colorClass = '';
+                        var iconClass = '';
 
                         switch (data) {
                             case 'Aktif':
-                                badgeClass = 'bg-success';
-                                icon = 'fas fa-user-check';
+                                colorClass = 'bg-success';
+                                iconClass = 'fas fa-user-check';
                                 break;
                             case 'Pasif':
-                                badgeClass = 'bg-warning';
-                                icon = 'fas fa-user-times';
+                                colorClass = 'bg-warning';
+                                iconClass = 'fas fa-user-times';
                                 break;
                             case 'Kullanıcı Yok':
-                                badgeClass = 'bg-secondary';
-                                icon = 'fas fa-user-slash';
+                                colorClass = 'bg-secondary';
+                                iconClass = 'fas fa-user-plus';
                                 break;
                             default:
-                                badgeClass = 'bg-danger';
-                                icon = 'fas fa-exclamation-triangle';
+                                colorClass = 'bg-danger';
+                                iconClass = 'fas fa-exclamation-triangle';
                         }
 
-                        return '<span class="badge ' + badgeClass + '"><i class="' + icon + ' me-1"></i>' + data + '</span>';
+                        return '<span class="badge ' + colorClass + '"><i class="' + iconClass + '"></i> ' + data + '</span>';
+                    }
+                },
+                {
+                    title: 'Online Rezervasyon',
+                    data: "canTakeOnlineReservation",
+                    render: function (data) {
+                        if (data) {
+                            return '<span class="badge bg-success"><i class="fas fa-check"></i> Evet</span>';
+                        } else {
+                            return '<span class="badge bg-secondary"><i class="fas fa-times"></i> Hayır</span>';
+                        }
                     }
                 },
                 {
                     title: 'Durum',
                     data: "isActive",
-                    render: function (data, type, row) {
-                        var badge = '';
+                    render: function (data) {
                         if (data) {
-                            badge = '<span class="badge bg-success">Aktif</span>';
+                            return '<span class="badge bg-success"><i class="fas fa-check"></i> Aktif</span>';
                         } else {
-                            badge = '<span class="badge bg-danger">Pasif</span>';
+                            return '<span class="badge bg-danger"><i class="fas fa-times"></i> Pasif</span>';
                         }
-
-                        // Online rezervasyon durumu
-                        if (data && row.canTakeOnlineReservation) {
-                            badge += '<br><small class="badge bg-info mt-1">Online Rez.</small>';
-                        }
-
-                        return badge;
                     }
                 },
                 {
-                    title: 'Kayıt Tarihi',
+                    title: 'Oluşturulma',
                     data: "creationTime",
                     render: function (data) {
-                        return luxon
-                            .DateTime
-                            .fromISO(data, {
-                                locale: abp.localization.currentCulture.name
-                            }).toLocaleString(luxon.DateTime.DATETIME_SHORT);
+                        return luxon.DateTime.fromISO(data, {
+                            locale: abp.localization.currentCulture.name
+                        }).toLocaleString(luxon.DateTime.DATETIME_SHORT);
                     }
                 }
             ]
         })
     );
 
-    // Event handlers
+    // Store dataTable reference globally for modal refresh
+    window.employeeDataTable = dataTable;
+
     createModal.onResult(function () {
         dataTable.ajax.reload();
-        abp.notify.success('Çalışan başarıyla oluşturuldu');
-    });
-
-    editModal.onResult(function () {
-        dataTable.ajax.reload();
-        abp.notify.success('Çalışan başarıyla güncellendi');
-    });
-
-    workingHoursModal.onResult(function () {
-        abp.notify.success('Çalışma saatleri güncellendi');
     });
 
     serviceAssignmentModal.onResult(function () {
-        abp.notify.success('Hizmet atamaları güncellendi');
+        dataTable.ajax.reload();
     });
 
     $('#NewEmployeeButton').click(function (e) {
@@ -343,116 +242,25 @@ $(function () {
         createModal.open();
     });
 
-    // Filtre events
-    $('#EmployeeTypeFilter, #ServiceGenderFilter, #IsActiveFilter, #HasUserFilter, #CanTakeOnlineReservationFilter').change(function () {
+    // Filtreleme işlemleri
+    $('#EmployeeTypeFilter').change(function () {
         dataTable.ajax.reload();
     });
 
-    $('#FilterInput').on('input', debounce(function () {
-        dataTable.ajax.reload();
-    }, 500));
-
-    $('#MinSalaryFilter, #MaxSalaryFilter').on('input', debounce(function () {
-        dataTable.ajax.reload();
-    }, 500));
-
-    $('#ClearFiltersButton').click(function () {
-        $('#FilterInput').val('');
-        $('#EmployeeTypeFilter').val('');
-        $('#ServiceGenderFilter').val('');
-        $('#IsActiveFilter').val('');
-        $('#HasUserFilter').val('');
-        $('#CanTakeOnlineReservationFilter').val('');
-        $('#MinSalaryFilter').val('');
-        $('#MaxSalaryFilter').val('');
+    $('#ServiceGenderFilter').change(function () {
         dataTable.ajax.reload();
     });
 
-    // Helper functions
-    function createUserForEmployee(employeeId) {
-        abp.message.inputDialog({
-            title: 'Kullanıcı Oluştur',
-            text: 'Çalışan için kullanıcı hesabı oluşturmak istediğinizden emin misiniz?',
-            inputPlaceholder: 'Kullanıcı adı giriniz...',
-            inputRequired: true
-        }).then(function (result) {
-            if (result.value) {
-                abp.message.inputDialog({
-                    title: 'Şifre Belirle',
-                    text: 'Kullanıcı şifresini giriniz:',
-                    inputType: 'password',
-                    inputPlaceholder: 'Şifre (en az 6 karakter)',
-                    inputRequired: true
-                }).then(function (passwordResult) {
-                    if (passwordResult.value && passwordResult.value.length >= 6) {
-                        beroxAppy.employees.employee
-                            .createUser(employeeId, result.value, passwordResult.value)
-                            .then(function () {
-                                abp.notify.success('Kullanıcı başarıyla oluşturuldu');
-                                dataTable.ajax.reload();
-                            });
-                    } else {
-                        abp.message.error('Şifre en az 6 karakter olmalıdır!');
-                    }
-                });
-            }
-        });
-    }
+    $('#IsActiveFilter').change(function () {
+        dataTable.ajax.reload();
+    });
 
-    function showUserManagementMenu(employee) {
-        var items = [
-            {
-                text: employee.userStatus === 'Aktif' ? 'Kullanıcıyı Pasif Yap' : 'Kullanıcıyı Aktif Yap',
-                action: function () {
-                    var newStatus = employee.userStatus !== 'Aktif';
-                    beroxAppy.employees.employee
-                        .setUserActiveStatus(employee.id, newStatus)
-                        .then(function () {
-                            abp.notify.success('Kullanıcı durumu güncellendi');
-                            dataTable.ajax.reload();
-                        });
-                }
-            },
-            {
-                text: 'Şifre Sıfırla',
-                action: function () {
-                    abp.message.inputDialog({
-                        title: 'Yeni Şifre',
-                        text: 'Yeni şifreyi giriniz:',
-                        inputType: 'password',
-                        inputPlaceholder: 'Yeni şifre (en az 6 karakter)',
-                        inputRequired: true
-                    }).then(function (result) {
-                        if (result.value && result.value.length >= 6) {
-                            beroxAppy.employees.employee
-                                .resetUserPassword(employee.id, result.value)
-                                .then(function () {
-                                    abp.notify.success('Şifre başarıyla sıfırlandı');
-                                });
-                        } else {
-                            abp.message.error('Şifre en az 6 karakter olmalıdır!');
-                        }
-                    });
-                }
-            }
-        ];
+    $('#HasUserFilter').change(function () {
+        dataTable.ajax.reload();
+    });
 
-        // Context menu göster (basit implementasyon)
-        var menu = items.map(item => `<button class="dropdown-item" onclick="(${item.action})()">${item.text}</button>`).join('');
-        abp.message.info('Kullanıcı yönetimi seçenekleri için sağ tık menüsü yakında eklenecek...');
-    }
-
-    function debounce(func, wait) {
-        var timeout;
-        return function executedFunction() {
-            var context = this;
-            var args = arguments;
-            var later = function () {
-                timeout = null;
-                func.apply(context, args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
+    // Arama
+    $('#EmployeeSearchInput').on('keyup', function () {
+        dataTable.search(this.value).draw();
+    });
 });

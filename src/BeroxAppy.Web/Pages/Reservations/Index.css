@@ -1,0 +1,202 @@
+﻿/* Rezervasyon Sayfası Stilleri */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.page-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Takvim özelleştirmeleri */
+#calendar {
+    background: #fff;
+    padding: 10px;
+}
+
+.fc-event {
+    cursor: pointer;
+    border: none;
+    padding: 2px 5px;
+    font-size: 0.85rem;
+}
+
+    .fc-event:hover {
+        opacity: 0.8;
+    }
+
+.fc-timegrid-slot {
+    height: 40px;
+}
+
+.fc-timegrid-slot-label {
+    font-size: 0.85rem;
+}
+
+/* Sol panel kartları */
+.card {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: none;
+    margin-bottom: 15px;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    padding: 10px 15px;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Hizmet satırları */
+.service-row {
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+    .service-row:hover {
+        background-color: #e9ecef;
+    }
+
+.remove-service-btn {
+    width: 100%;
+}
+
+/* Yaklaşan rezervasyonlar listesi */
+#upcomingReservations .list-group-item {
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+}
+
+    #upcomingReservations .list-group-item:last-child {
+        border-bottom: none;
+    }
+
+    #upcomingReservations .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+
+/* Modal özelleştirmeleri */
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-title {
+    font-weight: 600;
+}
+
+/* Form elemanları */
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Günlük özet */
+#dailySummary {
+    font-size: 0.9rem;
+}
+
+    #dailySummary hr {
+        margin: 10px 0;
+    }
+
+/* Responsive düzenlemeler */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-actions {
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .service-row .row {
+        margin-bottom: 10px;
+    }
+
+    .service-row .col-md-1 {
+        margin-top: 10px;
+    }
+}
+
+/* Takvim event renkleri */
+.fc-event.walk-in {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+.fc-event.pending {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #000;
+}
+
+.fc-event.arrived {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.fc-event.no-show {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Müsait olmayan saat slotları */
+.fc-timegrid-slot.fc-timegrid-slot-minor {
+    border-color: #f0f0f0;
+}
+
+.time-slot-unavailable {
+    background-color: #f8d7da;
+    opacity: 0.5;
+}
+
+/* Rezervasyon detay tablosu */
+#reservationDetailContent table {
+    font-size: 0.9rem;
+}
+
+#reservationDetailContent .badge {
+    font-size: 0.85rem;
+}

@@ -80,6 +80,23 @@ public class BeroxAppyMenuContributor : IMenuContributor
         context.Menu.AddItem(employeesMenu);
 
 
+        // Randevular Menüsü
+        var reservationsMenu = new ApplicationMenuItem(
+            BeroxAppyMenus.Reservations,
+            "Randevular",
+            url: "/Reservations",
+            icon: "fas fa-calendar-alt"
+        );
+        var walkInsMenu = new ApplicationMenuItem(
+          BeroxAppyMenus.WalkIns,
+          "Adisyonlar",
+          url: "/Reservations/WalkIns",
+          icon: "fas fa-cash-register"
+        );
+
+        context.Menu.AddItem(reservationsMenu);
+        context.Menu.AddItem(walkInsMenu);
+
         if (MultiTenancyConsts.IsEnabled)
         {
             administration.SetSubItemOrder(TenantManagementMenuNames.GroupName, 1);

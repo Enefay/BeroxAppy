@@ -1,0 +1,124 @@
+﻿@page "/Employees/ServiceAssignmentModal"
+@using BeroxAppy.Web.Pages.Employees
+@model ServiceAssignmentModalModel
+@{
+    Layout = null;
+}
+
+<form asp-page="/Employees/ServiceAssignmentModal" method="post">
+    <abp-modal size="Large">
+        <abp-modal-header title="@($"Hizmet Atama - {Model.EmployeeName}")">
+            <i class="fas fa-cogs text-primary me-2"></i>
+        </abp-modal-header>
+        <abp-modal-body>
+            <input asp-for="EmployeeId" id="EmployeeId" type="hidden" value="@Model.EmployeeId" />
+
+            <div class="row">
+                <!-- Atanmış Hizmetler -->
+                <div class="col-md-6">
+                    <h6 class="text-success mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Atanmış Hizmetler
+                    </h6>
+                    <div class="border rounded p-3" style="min-height: 350px; max-height: 400px; overflow-y: auto;">
+                        <div id="assignedServices">
+                            @if (Model.AssignedServices?.Any() == true)
+                            {
+                                @foreach (var service in Model.AssignedServices)
+                                {
+                                    <div class="card mb-2 assigned-service" data-service-id="@service.ServiceId">
+                                        <div class="card-body p-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="card-title mb-1">@service.ServiceTitle</h6>
+                                                    <small class="text-muted">
+                                                        @service.ServiceCategoryName |
+                                                        ₺@service.ServicePrice.ToString("N2") |
+                                                        @service.ServiceDuration dk
+                                                    </small>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-outline-danger unassign-service ms-2"
+                                                        data-service-id="@service.ServiceId"
+                                                        data-service-title="@service.ServiceTitle">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-5" id="noAssignedServices">
+                                    <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                    <p>Henüz hizmet atanmamış</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mevcut Hizmetler -->
+                <div class="col-md-6">
+                    <h6 class="text-info mb-3">
+                        <i class="fas fa-list me-2"></i>
+                        Mevcut Hizmetler
+                    </h6>
+
+                    <!-- Filtreler -->
+                    <div class="mb-3">
+                        <div class="row">
+                            <div class="col-12 mb-2">
+                                <select id="categoryFilter" class="form-select form-select-sm">
+                                    <option value="">Tüm Kategoriler</option>
+                                    @foreach (var category in Model.ServiceCategories)
+                                    {
+                                        <option value="@category.Id">@category.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <input type="text" id="serviceSearch" class="form-control form-control-sm"
+                                       placeholder="Hizmet ara...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3" style="min-height: 300px; max-height: 400px; overflow-y: auto;">
+                        <div id="availableServices">
+                            @foreach (var service in Model.AvailableServices)
+                            {
+                                <div class="card mb-2 available-service"
+                                     data-service-id="@service.Id"
+                                     data-category-id="@service.CategoryId"
+                                     data-service-title="@service.Title">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="flex-grow-1">
+                                                <h6 class="card-title mb-1">@service.Title</h6>
+                                                <small class="text-muted">
+                                                    @service.CategoryName |
+                                                    ₺@service.Price.ToString("N2") |
+                                                    @service.DurationMinutes dk
+                                                </small>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-success assign-service ms-2"
+                                                    data-service-id="@service.Id"
+                                                    data-service-title="@service.Title"
+                                                    data-category-name="@service.CategoryName"
+                                                    data-service-price="@service.Price"
+                                                    data-service-duration="@service.DurationMinutes">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </abp-modal-body>
+        <abp-modal-footer buttons="Close"></abp-modal-footer>
+    </abp-modal>
+</form>
