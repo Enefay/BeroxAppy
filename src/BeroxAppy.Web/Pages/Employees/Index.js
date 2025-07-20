@@ -83,8 +83,33 @@
                                 }
                             },
                             {
+                                text: function (data) {
+                                    return data.isActive ? 'Pasif Yap' : 'Aktif Yap';
+                                },
+                                iconStyle: function (data) {
+                                    return data.isActive ? 'fas fa-eye-slash' : 'fas fa-eye';
+                                },
+                                action: function (data) {
+                                    var newStatus = !data.record.isActive;
+                                    var message = newStatus ? 'aktif' : 'pasif';
+
+                                    abp.message.confirm(
+                                        'Bu çalışanı ' + message + ' yapmak istediğinizden emin misiniz?'
+                                    ).then(function (confirmed) {
+                                        if (confirmed) {
+                                            beroxAppy.employees.employee
+                                                .setActiveStatus(data.record.id, newStatus)
+                                                .then(function () {
+                                                    abp.notify.success('Çalışan durumu güncellendi');
+                                                    dataTable.ajax.reload();
+                                                });
+                                        }
+                                    });
+                                }
+                            },
+                            {
                                 text: 'Sil',
-                                visible: abp.auth.isGranted('BeroxAppy.Employees.Delete'),
+                                //visible: abp.auth.isGranted('BeroxAppy.Employees.Delete'),
                                 confirmMessage: function (data) {
                                     return 'Bu çalışanı silmek istediğinizden emin misiniz: ' + data.record.fullName;
                                 },
