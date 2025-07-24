@@ -12,9 +12,7 @@ using Volo.Abp.Domain.Repositories;
 
 namespace BeroxAppy.Services
 {
-    public class ServiceAppService :
-        CrudAppService<Service, ServiceDto, Guid, GetServicesInput, ServiceDto>,
-        IServiceAppService
+    public class ServiceAppService : CrudAppService<Service, ServiceDto, Guid, GetServicesInput, ServiceDto>,IServiceAppService
     {
         private readonly IRepository<ServiceCategory, Guid> _categoryRepository;
 

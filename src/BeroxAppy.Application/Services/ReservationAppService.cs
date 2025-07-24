@@ -274,7 +274,9 @@ namespace BeroxAppy.Reservations
                 await _reservationDetailRepository.InsertAsync(detail);
             }
 
-            return await GetAsync(reservation.Id);
+            var mappedData = ObjectMapper.Map<Reservation, ReservationDto>(reservation);
+            return mappedData;
+            
         }
 
         /// <summary>

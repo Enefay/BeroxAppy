@@ -40,8 +40,10 @@
                 updateAvailableSlots();
             });
 
-            // Fiyat hesaplama
-            $(document).off('input', '#discountAmount, #extraAmount').on('input', '#discountAmount, #extraAmount', calculateTotalPrice);
+            // Fiyat hesaplama - İndirim ve ekstra ücret değişikliklerinde
+            $(document).off('input change', '#discountAmount, #extraAmount').on('input change', '#discountAmount, #extraAmount', function() {
+                calculateTotalPrice();
+            });
         }
 
         // Hizmet satırı ekle
@@ -93,10 +95,11 @@
                 row.find('.detail-start-time').val(startTime);
             });
 
-            // Fiyat değişikliği - hidden input'ı güncelle
-            row.find('.service-price').on('input', function() {
+            // Fiyat değişikliği - hidden input'ı güncelle ve toplam hesapla
+            row.find('.service-price').on('input change', function() {
                 const price = $(this).val();
-                row.find('.detail-custom-price').val(price);
+                row.find('.detail-custom-price').val(price.toString().replace(',', '.'));
+                // Her fiyat değişikliğinde toplam hesapla
                 calculateTotalPrice();
             });
 
@@ -183,22 +186,34 @@
                 }
             });
 
-            // Fiyatı güncelle
-            const selectedOption = selectElement.find('option:selected');
-            const serviceText = selectedOption.text();
-            const priceRegex = /(?:₺|TL)\s?([\d,.]+)/i;
-            const priceMatch = serviceText.match(priceRegex);
+            // Servis fiyatını API'den al
+            $.ajax({
+                url: '/Reservations/CreateEditModal?handler=ServicePrice',
+                type: 'GET',
+                data: { serviceId: serviceId },
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    if (response && response.price !== undefined) {
+                        const price = parseFloat(response.price);
+                        if (!isNaN(price)) {
+                            row.find('.service-price').val(price.toFixed(2));
+                            row.find('.detail-custom-price').val(price.toString().replace(',', '.'));
 
-            if (priceMatch) {
-                const priceStr = priceMatch[1].replace(/\./g, '').replace(',', '.');
-                const price = parseFloat(priceStr);
-
-                if (!isNaN(price)) {
-                    row.find('.service-price').val(price.toFixed(2));
-                    row.find('.detail-custom-price').val(price.toFixed(2));
+                            // Fiyat geldiği anda toplam hesapla
+                            calculateTotalPrice();
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Servis fiyatı alınamadı:', error);
+                    // Hata durumunda fiyatı sıfırla
+                    row.find('.service-price').val('0.00');
+                    row.find('.detail-custom-price').val('0.00');
                     calculateTotalPrice();
                 }
-            }
+            });
         }
 
         // Çalışan değiştiğinde
@@ -255,21 +270,33 @@
             });
         }
 
-        // Toplam fiyatı hesapla
+        // Toplam fiyatı hesapla - Dinamik hesaplama
         function calculateTotalPrice() {
             let total = 0;
 
+            // Tüm hizmet fiyatlarını topla
             $('.service-price').each(function () {
                 const price = parseFloat($(this).val()) || 0;
                 total += price;
             });
 
+            // İndirim ve ekstra ücretleri al
             const discount = parseFloat($('#discountAmount').val()) || 0;
             const extra = parseFloat($('#extraAmount').val()) || 0;
 
+            // Toplam hesapla (negatif olamaz)
             total = Math.max(0, total - discount + extra);
 
+            // Toplam tutarı güncelle - Türk Lirası formatında
             $('#totalAmount').val('₺' + total.toFixed(2));
+
+            // Debug için konsola yazdır
+            console.log('Fiyat hesaplaması:', {
+                servicesTotali: $('.service-price').toArray().reduce((sum, el) => sum + (parseFloat($(el).val()) || 0), 0),
+                indirim: discount,
+                ekstra: extra,
+                toplamTutar: total
+            });
         }
 
         function updateAvailableSlots() {
@@ -363,7 +390,6 @@
         });
     });
 </script>
-
 <form asp-page="/Reservations/CreateEditModal">
     <abp-modal size="Large">
         <abp-modal-header title="@(Model.Reservation?.Id == Guid.Empty ? "Yeni Rezervasyon" : "Rezervasyon Düzenle")"></abp-modal-header>
@@ -409,12 +435,12 @@
             <div class="row mb-3">
                 <div class="col-md-4">
                     <label class="form-label" asp-for="Reservation.DiscountAmount">İndirim (₺)</label>
-                    <input type="number" asp-for="Reservation.DiscountAmount" class="form-control" min="0" step="0.01" />
+                    <input type="number" id="discountAmount" asp-for="Reservation.DiscountAmount" class="form-control" min="0" step="10" />
                     <span asp-validation-for="Reservation.DiscountAmount" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" asp-for="Reservation.ExtraAmount">Ekstra Ücret (₺)</label>
-                    <input type="number" asp-for="Reservation.ExtraAmount" class="form-control" min="0" step="0.01" />
+                    <input type="number" id="extraAmount" asp-for="Reservation.ExtraAmount" class="form-control" min="0" step="10" />
                     <span asp-validation-for="Reservation.ExtraAmount" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">

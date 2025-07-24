@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BeroxAppy.Customers;
 using BeroxAppy.Employees;
+using BeroxAppy.Reservations;
 using BeroxAppy.Services;
 using Volo.Abp.AutoMapper;
 
@@ -79,5 +80,12 @@ public class BeroxAppyApplicationAutoMapperProfile : Profile
             .Ignore(x => x.Id)
             .Ignore(x => x.Employee); // Navigation property
 
+
+        /* Reservation mappings */
+        CreateMap<Reservation, ReservationDto>();
+        CreateMap<ReservationDto, Reservation>();
+        // Eğer ReservationDetail için de kullanıyorsan:
+        CreateMap<ReservationDetail, ReservationDetailDto>();
+        CreateMap<ReservationDetailDto, ReservationDetail>();
     }
 }

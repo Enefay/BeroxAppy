@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using BeroxAppy.Reservations;
@@ -85,7 +85,7 @@ namespace BeroxAppy.Web.Pages.Reservations
             catch (Exception ex)
             {
                 // Log the error
-                Logger.LogError(ex, "Rezervasyon kaydedilirken hata oluþtu");
+                Logger.LogError(ex, "Rezervasyon kaydedilirken hata oluÅŸtu");
                 throw;
             }
         }
@@ -97,6 +97,21 @@ namespace BeroxAppy.Web.Pages.Reservations
             return new JsonResult(employees.Items);
         }
 
+        // Servis fiyatÄ±nÄ± getir
+        public async Task<IActionResult> OnGetServicePriceAsync(Guid serviceId)
+        {
+            try
+            {
+                var service = await _serviceAppService.GetAsync(serviceId);
+                return new JsonResult(new { price = service.Price });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Servis fiyatÄ± alÄ±nÄ±rken hata oluÅŸtu: {ServiceId}", serviceId);
+                return new JsonResult(new { price = 0 });
+            }
+        }
+
         public async Task<IActionResult> OnGetAvailableSlotsAsync(Guid employeeId, Guid serviceId, DateTime date)
         {
             var slots = await _reservationAppService.GetAvailableSlotsAsync(employeeId, serviceId, date);
@@ -105,7 +120,7 @@ namespace BeroxAppy.Web.Pages.Reservations
 
         private async Task LoadLookups()
         {
-            // Müþteri listesi
+            // MÃ¼ÅŸteri listesi
             var customerList = await _customerAppService.GetActiveListAsync();
             Customers = customerList.Items.Select(x => new SelectListItem
             {
@@ -118,10 +133,10 @@ namespace BeroxAppy.Web.Pages.Reservations
             Services = serviceList.Items.Select(x => new SelectListItem
             {
                 Value = x.Id.ToString(),
-                Text = $"{x.Title} ({x.DurationDisplay} - {x.Price:C})"
+                Text = $"{x.Title} ({x.DurationDisplay} - â‚º{x.Price:F2})" 
             }).ToList();
 
-            // Çalýþan listesi
+            // Ã‡alÄ±ÅŸan listesi
             var employeeList = await _employeeAppService.GetActiveListAsync();
             Employees = employeeList.Items.Select(x => new SelectListItem
             {
@@ -130,12 +145,14 @@ namespace BeroxAppy.Web.Pages.Reservations
             }).ToList();
         }
 
+
+
         public class ReservationViewModel
         {
             public Guid Id { get; set; }
 
             [Required]
-            [Display(Name = "Müþteri")]
+            [Display(Name = "MÃ¼ÅŸteri")]
             public Guid CustomerId { get; set; }
 
             [Display(Name = "Not")]
@@ -145,15 +162,15 @@ namespace BeroxAppy.Web.Pages.Reservations
             [Display(Name = "Rezervasyon Tarihi")]
             public DateTime ReservationDate { get; set; }
 
-            [Display(Name = "Ýndirim Tutarý")]
-            [Range(0, double.MaxValue, ErrorMessage = "Ýndirim tutarý negatif olamaz")]
+            [Display(Name = "Ä°ndirim TutarÄ±")]
+            [Range(0, double.MaxValue, ErrorMessage = "Ä°ndirim tutarÄ± negatif olamaz")]
             public decimal? DiscountAmount { get; set; }
 
             [Display(Name = "Ekstra Tutar")]
             [Range(0, double.MaxValue, ErrorMessage = "Ekstra tutar negatif olamaz")]
             public decimal? ExtraAmount { get; set; }
 
-            [Display(Name = "Adisyon / Rezervasyonsuz Müþteri")]
+            [Display(Name = "Adisyon / Rezervasyonsuz MÃ¼ÅŸteri")]
             public bool IsWalkIn { get; set; }
 
             public List<ReservationDetailViewModel> ReservationDetails { get; set; } = new();
