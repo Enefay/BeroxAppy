@@ -158,11 +158,14 @@
 
             // Çalışan değiştiğinde
             function onEmployeeChange(selectElement) {
+
+
                 const employeeId = selectElement.val();
                 const row = selectElement.closest('.service-row');
                 const serviceId = row.find('.service-select').val();
                 const date = $('#reservationDate').val();
                 const timeSelect = row.find('.time-select');
+
 
                 if (!employeeId || !serviceId || !date) {
                     timeSelect.html('<option value="">Önce tüm alanları doldurun</option>');
@@ -187,8 +190,10 @@
                     success: function (response) {
                         timeSelect.html('<option value="">Saat Seçin</option>');
 
-                        if (response && response.availableSlots && response.availableSlots.length > 0) {
-                            response.availableSlots.forEach(slot => {
+                        const slots = response.availableSlots && response.availableSlots.availableSlots;
+
+                        if (slots && slots.length > 0) {
+                            slots.forEach(slot => {
                                 if (slot.isAvailable) {
                                     timeSelect.append(`<option value="${slot.startTime}">${slot.display}</option>`);
                                 }
@@ -266,7 +271,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" asp-for="Reservation.ReservationDate">Tarih *</label>
-                    <input type="date" asp-for="Reservation.ReservationDate" class="form-control" required />
+                    <input type="date" id="reservationDate" asp-for="Reservation.ReservationDate" class="form-control" required />
                     <span asp-validation-for="Reservation.ReservationDate" class="text-danger"></span>
                 </div>
             </div>
