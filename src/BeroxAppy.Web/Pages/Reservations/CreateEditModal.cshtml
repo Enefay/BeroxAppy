@@ -9,9 +9,12 @@
     Layout = null;
 }
 
+
 <script>
     $(function () {
         let serviceRowIndex = 0;
+        let customerSearchTimeout;
+        let selectedCustomer = null;
 
         // Modal açıldığında çalışacak fonksiyon
         initializeModal();
@@ -24,6 +27,9 @@
 
             // Event'leri bağla
             bindModalEvents();
+            
+            // Müşteri autocomplete'i başlat
+            initializeCustomerAutocomplete();
 
             // İlk hesaplama
             setTimeout(calculateTotalPrice, 100);
@@ -44,6 +50,156 @@
             $(document).off('input change', '#discountAmount, #extraAmount').on('input change', '#discountAmount, #extraAmount', function() {
                 calculateTotalPrice();
             });
+        }
+
+        // Müşteri autocomplete fonksiyonu
+        function initializeCustomerAutocomplete() {
+            const searchInput = $('#customerSearch');
+            const dropdown = $('#customerDropdown');
+            const hiddenCustomerId = $('#selectedCustomerId');
+
+            // Input focus olduğunda dropdown'u göster
+            searchInput.on('focus', function() {
+                if ($(this).val().length >= 1) {
+                    searchCustomers($(this).val());
+                }
+            });
+
+            // Input'a yazı yazıldığında arama yap
+            searchInput.on('input', function() {
+                const query = $(this).val().trim();
+                
+                // Seçili müşteriyi temizle
+                if (selectedCustomer && selectedCustomer.fullName !== query) {
+                    selectedCustomer = null;
+                    hiddenCustomerId.val('');
+                }
+
+                if (query.length >= 1) {
+                    // Debounce - 300ms bekle
+                    clearTimeout(customerSearchTimeout);
+                    customerSearchTimeout = setTimeout(() => {
+                        searchCustomers(query);
+                    }, 300);
+                } else {
+                    dropdown.hide();
+                }
+            });
+
+            // Input'tan çıkıldığında dropdown'u gizle (kısa gecikme ile)
+            searchInput.on('blur', function() {
+                setTimeout(() => {
+                    dropdown.hide();
+                }, 200);
+            });
+
+            // Dropdown item'lara tıklama
+            $(document).off('click', '.customer-dropdown-item').on('click', '.customer-dropdown-item', function(e) {
+                e.preventDefault();
+                const customerId = $(this).data('customer-id');
+                const customerName = $(this).data('customer-name');
+                
+                if (customerId === 'new') {
+                    // Yeni müşteri ekleme
+                    console.log('Yeni müşteri eklenecek');
+                    dropdown.hide();
+                    return;
+                }
+
+                // Müşteriyi seç
+                selectedCustomer = {
+                    id: customerId,
+                    fullName: customerName
+                };
+                
+                searchInput.val(customerName);
+                hiddenCustomerId.val(customerId);
+                dropdown.hide();
+            });
+        }
+
+        // Müşteri arama AJAX fonksiyonu
+        function searchCustomers(query) {
+            const dropdown = $('#customerDropdown');
+            
+            // Loading göster
+            dropdown.html('<div class="dropdown-item disabled">Aranıyor...</div>').show();
+
+            $.ajax({
+                url: '/Reservations/CreateEditModal?handler=SearchCustomers',
+                type: 'GET',
+                data: { query: query },
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(customers) {
+                    dropdown.empty();
+
+                    // Yeni müşteri ekle seçeneği (her zaman en üstte)
+                    dropdown.append(`
+                        <a href="#" class="dropdown-item customer-dropdown-item text-primary" data-customer-id="new">
+                            <i class="fas fa-plus me-2"></i>
+                            <strong>Yeni müşteri ekle: "${query}"</strong>
+                        </a>
+                    `);
+
+                    if (customers && customers.length > 0) {
+                        // Ayırıcı ekle
+                        dropdown.append('<div class="dropdown-divider"></div>');
+                        
+                        // Müşteri listesi (maksimum 5 kişi)
+                        customers.slice(0, 5).forEach(customer => {
+                            dropdown.append(`
+                                <a href="#" class="dropdown-item customer-dropdown-item" 
+                                   data-customer-id="${customer.id}" 
+                                   data-customer-name="${customer.fullName}">
+                                    <div class="d-flex justify-content-between">
+                                        <span><strong>${customer.fullName}</strong></span>
+                                        <small class="text-muted">${customer.phone}</small>
+                                    </div>
+                                    ${customer.email ? `<small class="text-muted">${customer.email}</small>` : ''}
+                                </a>
+                            `);
+                        });
+                    } else {
+                        dropdown.append('<div class="dropdown-item disabled text-muted">Müşteri bulunamadı</div>');
+                    }
+
+                    dropdown.show();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Müşteri arama hatası:', error);
+                    dropdown.html('<div class="dropdown-item disabled text-danger">Arama hatası oluştu</div>').show();
+                }
+            });
+        }
+
+        // Düzenleme modu için müşteri bilgisini yükle
+        function loadExistingCustomerInfo() {
+            const customerId = $('#selectedCustomerId').val();
+            if (customerId && customerId !== '00000000-0000-0000-0000-000000000000') {
+                // AJAX ile müşteri bilgisini al
+                $.ajax({
+                    url: '/Reservations/CreateEditModal?handler=CustomerInfo',
+                    type: 'GET',
+                    data: { customerId: customerId },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(customer) {
+                        if (customer) {
+                            $('#customerSearch').val(customer.fullName);
+                            selectedCustomer = {
+                                id: customer.id,
+                                fullName: customer.fullName
+                            };
+                        }
+                    },
+                    error: function() {
+                        console.error('Müşteri bilgisi yüklenemedi');
+                    }
+                });
+            }
         }
 
         // Hizmet satırı ekle
@@ -314,6 +470,12 @@
             let isValid = true;
             const errors = [];
 
+            // Müşteri seçimi kontrolü
+            if (!$('#selectedCustomerId').val()) {
+                errors.push('Müşteri seçilmemiş');
+                isValid = false;
+            }
+
             $('#servicesContainer .service-row').each(function(index) {
                 const row = $(this);
                 const serviceId = row.find('.service-select').val();
@@ -382,16 +544,22 @@
         $('#createEditModal').on('hidden.bs.modal', function () {
             $('#servicesContainer').empty();
             serviceRowIndex = 0;
+            selectedCustomer = null;
+            $('#customerSearch').val('');
+            $('#selectedCustomerId').val('');
+            $('#customerDropdown').hide();
         });
 
         // Modal açıldığında yeniden initialize et
         $('#createEditModal').on('shown.bs.modal', function () {
             initializeModal();
+            loadExistingCustomerInfo();
         });
     });
 </script>
+
 <form asp-page="/Reservations/CreateEditModal">
-    <abp-modal size="Large">
+    <abp-modal size="ExtraLarge">
         <abp-modal-header title="@(Model.Reservation?.Id == Guid.Empty ? "Yeni Rezervasyon" : "Rezervasyon Düzenle")"></abp-modal-header>
         <abp-modal-body>
             <input asp-for="Reservation.Id" type="hidden" />
@@ -399,15 +567,26 @@
             <!-- Müşteri Seçimi -->
             <div class="row mb-3">
                 <div class="col-md-8">
-                    <label class="form-label" asp-for="Reservation.CustomerId">Müşteri *</label>
-                    <select asp-for="Reservation.CustomerId" class="form-select" required>
-                        <option value="">Müşteri Seçin</option>
-                        @foreach (var customer in Model.Customers)
-                        {
-                            <option value="@customer.Value">@customer.Text</option>
-                        }
-                    </select>
+                    <label class="form-label">Müşteri *</label>
+                    <div class="position-relative">
+                        <input type="text"
+                               id="customerSearch"
+                               class="form-control"
+                               placeholder="Müşteri adı yazın..."
+                               autocomplete="off" />
+                        <input type="hidden"
+                               asp-for="Reservation.CustomerId"
+                               id="selectedCustomerId" />
+
+                        <!-- Dropdown sonuçlar -->
+                        <div id="customerDropdown"
+                             class="dropdown-menu w-100"
+                             style="display: none; max-height: 300px; overflow-y: auto;">
+                            <!-- Dinamik olarak doldurulacak -->
+                        </div>
+                    </div>
                     <span asp-validation-for="Reservation.CustomerId" class="text-danger"></span>
+
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" asp-for="Reservation.ReservationDate">Tarih *</label>

@@ -51,5 +51,11 @@ namespace BeroxAppy.Customers
         /// Müşteri istatistikleri
         /// </summary>
         Task<CustomerStatsDto> GetStatsAsync();
+
+        /// <summary>
+        /// Müşteri arama
+        /// </summary>
+        Task<List<CustomerDto>> SearchCustomersAsync(string query, int maxResultCount = 10);
+
     }
 }

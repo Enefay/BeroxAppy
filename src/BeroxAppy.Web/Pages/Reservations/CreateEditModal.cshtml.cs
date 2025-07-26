@@ -118,6 +118,55 @@ namespace BeroxAppy.Web.Pages.Reservations
             return new JsonResult(new { availableSlots = slots });
         }
 
+        public async Task<IActionResult> OnGetSearchCustomersAsync(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 1)
+            {
+                return new JsonResult(new List<object>());
+            }
+
+            try
+            {
+                // Müşteri arama - isim ve telefona göre arama yap
+                var customers = await _customerAppService.SearchCustomersAsync(query, 5);
+
+                var result = customers.Select(c => new
+                {
+                    id = c.Id,
+                    fullName = c.FullName,
+                    phone = c.Phone,
+                    email = c.Email
+                });
+
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Müşteri arama sırasında hata oluştu: {Query}", query);
+                return new JsonResult(new List<object>());
+            }
+        }
+
+        public async Task<IActionResult> OnGetCustomerInfoAsync(Guid customerId)
+        {
+            try
+            {
+                var customer = await _customerAppService.GetAsync(customerId);
+                return new JsonResult(new
+                {
+                    id = customer.Id,
+                    fullName = customer.FullName,
+                    phone = customer.Phone,
+                    email = customer.Email
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Müşteri bilgisi alınırken hata oluştu: {CustomerId}", customerId);
+                return new JsonResult(null);
+            }
+        }
+
         private async Task LoadLookups()
         {
             // Müşteri listesi

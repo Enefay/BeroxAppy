@@ -355,5 +355,21 @@ namespace BeroxAppy.Customers
                 throw new UserFriendlyException("Bu telefon numarası zaten kayıtlı.");
             }
         }
+
+        public async Task<List<CustomerDto>> SearchCustomersAsync(string query, int maxResultCount = 10)
+        {
+            var queryable = await Repository.GetQueryableAsync();
+
+            var customers = await AsyncExecuter.ToListAsync(
+                queryable
+                    .Where(c => c.IsActive &&
+                               (c.FullName.Contains(query) || c.Phone.Contains(query)))
+                    .OrderBy(c => c.FullName)
+                    .Take(maxResultCount)
+            );
+
+            return ObjectMapper.Map<List<Customer>, List<CustomerDto>>(customers);
+        }
+
     }
 }

@@ -248,4 +248,13 @@ var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEdi
         abp.notify.success('Rezervasyon başarıyla kaydedildi!');
     });
 
+
+    // Yeni rezervasyon modalını aç
+    function openReservationModal(isWalkIn) {
+        createEditModal.open({
+            id: null
+        });
+    }
+
+
 })();
