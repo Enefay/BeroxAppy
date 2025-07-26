@@ -16,6 +16,12 @@
         let customerSearchTimeout;
         let selectedCustomer = null;
 
+        // ABP Modal Manager - Müşteri ekleme modalı
+        var customerCreateModal = new abp.ModalManager({
+            viewUrl: abp.appPath + 'Customers/CreateEditModal',
+            modalClass: 'CustomerCreateEditModal'
+        });
+
         // Modal açıldığında çalışacak fonksiyon
         initializeModal();
 
@@ -27,12 +33,35 @@
 
             // Event'leri bağla
             bindModalEvents();
-            
+
             // Müşteri autocomplete'i başlat
             initializeCustomerAutocomplete();
 
+            // ABP Modal event'lerini bağla
+            bindCustomerModalEvents();
+
             // İlk hesaplama
             setTimeout(calculateTotalPrice, 100);
+        }
+
+        function bindCustomerModalEvents() {
+
+            customerCreateModal.onResult((_, data) => {
+                if (data && data.statusText == 'success') {
+                    abp.notify.success('Müşteri başarıyla eklendi!');
+                    $('#customerSearch').val(data.responseText.fullName);
+                    $('#selectedCustomerId').val(data.responseText.id);
+                }
+            });
+           
+        }
+
+        // ABP Modal ile yeni müşteri ekleme modalını aç
+        function openAddCustomerModal(customerName = '') {
+            // Modal'ı aç
+            customerCreateModal.open({
+                customerName: customerName // Modal'a parametre gönder
+            });
         }
 
         function bindModalEvents() {
@@ -68,7 +97,7 @@
             // Input'a yazı yazıldığında arama yap
             searchInput.on('input', function() {
                 const query = $(this).val().trim();
-                
+
                 // Seçili müşteriyi temizle
                 if (selectedCustomer && selectedCustomer.fullName !== query) {
                     selectedCustomer = null;
@@ -98,10 +127,12 @@
                 e.preventDefault();
                 const customerId = $(this).data('customer-id');
                 const customerName = $(this).data('customer-name');
-                
+
                 if (customerId === 'new') {
-                    // Yeni müşteri ekleme
-                    console.log('Yeni müşteri eklenecek');
+                    // ABP Modal ile yeni müşteri ekleme modalını aç
+                    const searchQuery = $('#customerSearch').val().trim();
+                    console.log("Açılacak modal için query:", searchQuery);
+                    openAddCustomerModal(searchQuery);
                     dropdown.hide();
                     return;
                 }
@@ -111,7 +142,7 @@
                     id: customerId,
                     fullName: customerName
                 };
-                
+
                 searchInput.val(customerName);
                 hiddenCustomerId.val(customerId);
                 dropdown.hide();
@@ -121,7 +152,7 @@
         // Müşteri arama AJAX fonksiyonu
         function searchCustomers(query) {
             const dropdown = $('#customerDropdown');
-            
+
             // Loading göster
             dropdown.html('<div class="dropdown-item disabled">Aranıyor...</div>').show();
 
@@ -146,12 +177,12 @@
                     if (customers && customers.length > 0) {
                         // Ayırıcı ekle
                         dropdown.append('<div class="dropdown-divider"></div>');
-                        
+
                         // Müşteri listesi (maksimum 5 kişi)
                         customers.slice(0, 5).forEach(customer => {
                             dropdown.append(`
-                                <a href="#" class="dropdown-item customer-dropdown-item" 
-                                   data-customer-id="${customer.id}" 
+                                <a href="#" class="dropdown-item customer-dropdown-item"
+                                   data-customer-id="${customer.id}"
                                    data-customer-name="${customer.fullName}">
                                     <div class="d-flex justify-content-between">
                                         <span><strong>${customer.fullName}</strong></span>
@@ -465,81 +496,6 @@
             });
         }
 
-        // Form submit öncesi validation
-        function validateReservationDetails() {
-            let isValid = true;
-            const errors = [];
-
-            // Müşteri seçimi kontrolü
-            if (!$('#selectedCustomerId').val()) {
-                errors.push('Müşteri seçilmemiş');
-                isValid = false;
-            }
-
-            $('#servicesContainer .service-row').each(function(index) {
-                const row = $(this);
-                const serviceId = row.find('.service-select').val();
-                const employeeId = row.find('.employee-select').val();
-                const startTime = row.find('.time-select').val();
-
-                if (!serviceId) {
-                    errors.push(`${index + 1}. hizmet seçilmemiş`);
-                    isValid = false;
-                }
-                if (!employeeId) {
-                    errors.push(`${index + 1}. hizmet için çalışan seçilmemiş`);
-                    isValid = false;
-                }
-                if (!startTime) {
-                    errors.push(`${index + 1}. hizmet için saat seçilmemiş`);
-                    isValid = false;
-                }
-            });
-
-            if (!isValid) {
-                abp.notify.error('Eksik bilgiler: ' + errors.join(', '));
-            }
-
-            return isValid;
-        }
-
-        // Form submit event'i
-        $(document).on('submit', 'form', function(e) {
-            if (!validateReservationDetails()) {
-                e.preventDefault();
-                return false;
-            }
-
-            // Debug için form verilerini konsola yazdır
-            console.log('Form submit edildi');
-            console.log('Form data:', $(this).serialize());
-
-            // Hidden input'ları kontrol et
-            $('input[name*="ReservationDetails"]').each(function() {
-                console.log(this.name, '=', this.value);
-            });
-        });
-
-        // Debug fonksiyonu
-        window.debugReservationDetails = function() {
-            console.log('=== RESERVATION DETAILS DEBUG ===');
-            $('#servicesContainer .service-row').each(function(index) {
-                const row = $(this);
-                console.log(`Row ${index}:`, {
-                    serviceId: row.find('.service-select').val(),
-                    employeeId: row.find('.employee-select').val(),
-                    startTime: row.find('.time-select').val(),
-                    price: row.find('.service-price').val(),
-                    note: row.find('.service-note').val()
-                });
-
-                console.log(`Hidden inputs for row ${index}:`);
-                row.find('input[type="hidden"]').each(function() {
-                    console.log(`  ${this.name} = ${this.value}`);
-                });
-            });
-        };
-
         // Modal kapatıldığında temizlik yap
         $('#createEditModal').on('hidden.bs.modal', function () {
             $('#servicesContainer').empty();
@@ -558,10 +514,12 @@
     });
 </script>
 
-<form asp-page="/Reservations/CreateEditModal">
+<form asp-page="/Reservations/CreateEditModal" id="reservationForm">
     <abp-modal size="ExtraLarge">
         <abp-modal-header title="@(Model.Reservation?.Id == Guid.Empty ? "Yeni Rezervasyon" : "Rezervasyon Düzenle")"></abp-modal-header>
         <abp-modal-body>
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
             <input asp-for="Reservation.Id" type="hidden" />
 
             <!-- Müşteri Seçimi -->

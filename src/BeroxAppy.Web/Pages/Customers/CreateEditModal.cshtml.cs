@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using BeroxAppy.Customers;
 using BeroxAppy.Enums;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
+using System.Runtime.Intrinsics.Arm;
 
 namespace BeroxAppy.Web.Pages.Customers
 {
@@ -23,7 +24,7 @@ namespace BeroxAppy.Web.Pages.Customers
             _customerAppService = customerAppService;
         }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string customerName = null)
         {
             if (Id != Guid.Empty)
             {
@@ -46,6 +47,7 @@ namespace BeroxAppy.Web.Pages.Customers
             {
                 Customer = new CustomerDto
                 {
+                    FullName = customerName ?? string.Empty, // Parametre olarak gelen ismi set et
                     Gender = Gender.Unisex,
                     DiscountRate = 0,
                     TotalDebt = 0,
@@ -70,16 +72,21 @@ namespace BeroxAppy.Web.Pages.Customers
                     Customer.Instagram = Customer.Instagram.TrimStart('@');
                 }
 
+                CustomerDto savedCustomer;
+
+
                 if (Id != Guid.Empty)
                 {
-                    await _customerAppService.UpdateAsync(Id, Customer);
+                    savedCustomer = await _customerAppService.UpdateAsync(Id, Customer);
                 }
                 else
                 {
-                    await _customerAppService.CreateAsync(Customer);
+                    savedCustomer = await _customerAppService.CreateAsync(Customer);
                 }
 
-                return NoContent();
+
+                return new ObjectResult(savedCustomer); 
+
             }
             catch (Volo.Abp.BusinessException ex)
             {

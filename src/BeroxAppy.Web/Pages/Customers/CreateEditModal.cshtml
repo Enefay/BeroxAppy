@@ -10,7 +10,10 @@
     Layout = null;
 }
 
-<form asp-page="/Customers/CreateEditModal">
+
+    <form asp-page="/Customers/CreateEditModal" method="post" data-ajaxForm="true">
+
+
     <abp-modal>
         <abp-modal-header title="@(Model.Id == Guid.Empty ? "Yeni Müşteri" : "Müşteri Düzenle")"></abp-modal-header>
         <abp-modal-body>

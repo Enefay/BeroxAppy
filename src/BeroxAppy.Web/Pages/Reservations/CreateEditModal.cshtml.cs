@@ -64,7 +64,19 @@ namespace BeroxAppy.Web.Pages.Reservations
             if (!ModelState.IsValid)
             {
                 await LoadLookups();
-                return Page();
+                var errors = ModelState
+                           .Where(x => x.Value.Errors.Count > 0)
+                           .ToDictionary(
+                               kvp => kvp.Key,
+                               kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+                           );
+
+                return new JsonResult(new
+                {
+                    success = false,
+                    errors = errors,
+                    message = "Lütfen tüm gerekli alanları doldurun."
+                });
             }
 
             try
@@ -80,13 +92,16 @@ namespace BeroxAppy.Web.Pages.Reservations
                     await _reservationAppService.UpdateAsync(Reservation.Id, updateDto);
                 }
 
-                return NoContent();
+                return new JsonResult(new { success = true });
             }
             catch (Exception ex)
             {
-                // Log the error
                 Logger.LogError(ex, "Rezervasyon kaydedilirken hata oluştu");
-                throw;
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "Rezervasyon kaydedilirken bir hata oluştu: " + ex.Message
+                });
             }
         }
 
@@ -182,7 +197,7 @@ namespace BeroxAppy.Web.Pages.Reservations
             Services = serviceList.Items.Select(x => new SelectListItem
             {
                 Value = x.Id.ToString(),
-                Text = $"{x.Title} ({x.DurationDisplay} - ₺{x.Price:F2})" 
+                Text = $"{x.Title} ({x.DurationDisplay} - ₺{x.Price:F2})"
             }).ToList();
 
             // Çalışan listesi
