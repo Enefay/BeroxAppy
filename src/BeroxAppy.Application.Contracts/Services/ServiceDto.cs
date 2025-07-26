@@ -29,6 +29,8 @@ namespace BeroxAppy.Services
         public bool IsActive { get; set; } = true;
 
         // Kategori ilişkisi
+        [Display(Name = "Kategori")]
+        [Required(ErrorMessage = "Lütfen bir kategori seçin.")]
         public Guid? CategoryId { get; set; }
         public string CategoryName { get; set; } // Include için
 

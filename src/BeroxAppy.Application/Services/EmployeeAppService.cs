@@ -12,6 +12,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
+using Volo.Abp.ObjectMapping;
 using IdentityUser = Volo.Abp.Identity.IdentityUser;
 
 namespace BeroxAppy.Employees
@@ -126,7 +127,7 @@ namespace BeroxAppy.Employees
             if (input.Sorting?.Contains("fullName", StringComparison.OrdinalIgnoreCase) == true)
             {
                 query = query.OrderBy(e => e.FirstName).ThenBy(e => e.LastName);
-                input.Sorting = null; 
+                input.Sorting = null;
             }
 
             var result = await base.GetListAsync(input);
@@ -191,6 +192,31 @@ namespace BeroxAppy.Employees
             await CheckPhoneUniquenessAsync(input.Phone, id);
 
             return await base.UpdateAsync(id, input);
+        }
+
+
+        /// <summary>
+        /// Custom Update işleminde özel kontroller
+        /// </summary>
+        public async Task<EmployeeDto> UpdateCustomAsync(Guid id, EmployeeUpdateDto input)
+        {
+            // Email unique kontrolü (kendisi hariç)
+            if (!string.IsNullOrWhiteSpace(input.Email))
+            {
+                await CheckEmailUniquenessAsync(input.Email, id);
+            }
+
+            // Telefon unique kontrolü (kendisi hariç)
+            await CheckPhoneUniquenessAsync(input.Phone, id);
+
+
+            var mappedData = ObjectMapper.Map<EmployeeUpdateDto, EmployeeDto>(input);
+
+            var dbData = await base.GetAsync(id);
+
+            mappedData.UserId = dbData.UserId;
+
+            return await base.UpdateAsync(id, mappedData);
         }
 
         /// <summary>

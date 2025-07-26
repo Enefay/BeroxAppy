@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using BeroxAppy.Employees;
 using BeroxAppy.Enums;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
+using BeroxAppy.Customers;
+using System.Collections.Generic;
+using Volo.Abp.ObjectMapping;
 
 namespace BeroxAppy.Web.Pages.Employees
 {
@@ -15,6 +18,7 @@ namespace BeroxAppy.Web.Pages.Employees
 
         [BindProperty]
         public EmployeeDto Employee { get; set; }
+        public EmployeeUpdateDto EmployeeUpdate { get; set; }
 
         private readonly IEmployeeAppService _employeeAppService;
 
@@ -81,7 +85,11 @@ namespace BeroxAppy.Web.Pages.Employees
                 // Create/Update iþlemi
                 if (Id != Guid.Empty)
                 {
-                    await _employeeAppService.UpdateAsync(Id, Employee);
+
+
+                    var mappedData = ObjectMapper.Map<EmployeeDto, EmployeeUpdateDto>(Employee);
+
+                    await _employeeAppService.UpdateCustomAsync(Id, mappedData);
                 }
                 else
                 {

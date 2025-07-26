@@ -34,6 +34,9 @@
                     max: 1440,
                     digits: true
                 },
+                'Service.CategoryId': {
+                    required: true
+                },
                 'Service.Price': {
                     required: true,
                     min: 0.01,
@@ -47,6 +50,9 @@
                 },
                 'Service.Price': {
                     min: 'Fiyat 0\'dan büyük olmalıdır'
+                },
+                'Service.CategoryId': {
+                    required: 'Kategori seçmeniz zorunludur.'
                 }
             }
         });

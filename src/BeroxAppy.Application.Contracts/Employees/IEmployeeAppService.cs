@@ -17,6 +17,11 @@ namespace BeroxAppy.Employees
         Task<ListResultDto<EmployeeDto>> GetActiveListAsync();
 
         /// <summary>
+        /// Custom Update işleminde özel kontroller
+        /// </summary>
+        Task<EmployeeDto> UpdateCustomAsync(Guid id, EmployeeUpdateDto input);
+
+        /// <summary>
         /// Çalışanı aktif/pasif yap
         /// </summary>
         Task SetActiveStatusAsync(Guid id, bool isActive);

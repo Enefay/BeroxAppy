@@ -48,6 +48,10 @@ public class BeroxAppyApplicationAutoMapperProfile : Profile
             .Ignore(x => x.HasUser) // Manuel doldurulacak
             .Ignore(x => x.UserStatus); // Manuel doldurulacak
 
+
+        CreateMap<EmployeeDto, EmployeeUpdateDto>();
+        CreateMap<EmployeeUpdateDto, EmployeeDto>();
+
         CreateMap<EmployeeDto, Employee>()
             .Ignore(x => x.Id)
             .Ignore(x => x.ExtraProperties)

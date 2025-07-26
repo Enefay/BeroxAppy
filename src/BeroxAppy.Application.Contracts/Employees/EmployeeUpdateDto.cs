@@ -5,7 +5,7 @@ using Volo.Abp.Application.Dtos;
 
 namespace BeroxAppy.Employees
 {
-    public class EmployeeDto : FullAuditedEntityDto<Guid>
+    public class EmployeeUpdateDto : FullAuditedEntityDto<Guid>
     {
         [Display(Name = "Ad")]
         [Required(ErrorMessage = "Ad alanı zorunludur.")]
@@ -62,17 +62,6 @@ namespace BeroxAppy.Employees
 
         [Display(Name = "Aktif Mi?")]
         public bool IsActive { get; set; } = true;
-
-        // Create için gerekli alanlar
-        [Display(Name = "Şifre")]
-        [Required(ErrorMessage = "Şifre zorunludur.")]
-        [MinLength(6, ErrorMessage = "Şifre en az 6 karakter olmalıdır.")]
-        public string Password { get; set; }
-
-        [Display(Name = "Kullanıcı Adı")]
-        [Required(ErrorMessage = "Kullanıcı adı zorunludur.")]
-        [MaxLength(50, ErrorMessage = "Kullanıcı adı en fazla 50 karakter olabilir.")]
-        public string UserName { get; set; }
 
         // Display için hesaplanan alanlar
         [Display(Name = "Tam Ad")]
