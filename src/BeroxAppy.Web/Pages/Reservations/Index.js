@@ -9,6 +9,14 @@ var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEdi
 
     // Sayfa yüklendiğinde
     $(function () {
+
+        abp.event.on('app.reservation.saved', function (response) {
+            calendar.refetchEvents();
+            loadDailySummary();
+            loadUpcomingReservations();
+            abp.notify.success('Rezervasyon başarıyla kaydedildi!');
+        });
+
         initializeCalendar();
         bindEvents();
         loadDailySummary();
@@ -20,8 +28,15 @@ var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEdi
         const calendarEl = document.getElementById('calendar');
 
         calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridWeek',
+            //initialView: 'timeGridWeek',
             locale: 'tr',
+            buttonText: {   
+                today: 'Bugün',
+                month: 'Ay',
+                week: 'Hafta',
+                day: 'Gün',
+                list: 'Liste'
+            },
             height: 'auto',
             headerToolbar: {
                 left: 'prev,next today',
@@ -239,15 +254,6 @@ var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEdi
             }
         });
     }
-
-    // Modal sonuç callback (kaydedildikten sonra takvimi ve listeleri yenile)
-    createEditModal.onResult(function () {
-        calendar.refetchEvents();
-        loadDailySummary();
-        loadUpcomingReservations();
-        abp.notify.success('Rezervasyon başarıyla kaydedildi!');
-    });
-
 
     // Yeni rezervasyon modalını aç
     function openReservationModal(isWalkIn) {

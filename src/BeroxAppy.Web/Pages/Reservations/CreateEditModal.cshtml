@@ -128,15 +128,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Başarılı - Modal'ı kapat ve parent callback'i çağır
-                        $('#createEditModal').modal('hide');
-
-                        // Parent sayfadaki callback'i çağır
-                        if (typeof createEditModal !== 'undefined' && createEditModal.onResult) {
-                            createEditModal.onResult();
-                        }
-
-                        abp.notify.success('Rezervasyon başarıyla kaydedildi!');
+                        abp.event.trigger('app.reservation.saved', response);
+                        createEditModal.close();
+                        return;
                     } else {
                         // Validation hataları var - Modal'ı açık tut
                         handleValidationErrors(response);
@@ -621,8 +615,8 @@
     });
 </script>
 
-<form asp-page="/Reservations/CreateEditModal" id="reservationForm">
-    <abp-modal size="ExtraLarge">
+<form asp-page="/Reservations/CreateEditModal" id="reservationForm" data-check-form-on-close="false">
+    <abp-modal id="createEditModal" size="ExtraLarge">
         <abp-modal-header title="@(Model.Reservation?.Id == Guid.Empty ? "Yeni Rezervasyon" : "Rezervasyon Düzenle")"></abp-modal-header>
         <abp-modal-body>
             <div asp-validation-summary="All" class="text-danger mb-3"></div>

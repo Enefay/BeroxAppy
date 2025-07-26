@@ -11,10 +11,8 @@
 }
 
 
-    <form asp-page="/Customers/CreateEditModal" method="post" data-ajaxForm="true">
-
-
-    <abp-modal>
+<form asp-page="/Customers/CreateEditModal" method="post" data-ajaxForm="true">
+    <abp-modal size="Large">
         <abp-modal-header title="@(Model.Id == Guid.Empty ? "Yeni Müşteri" : "Müşteri Düzenle")"></abp-modal-header>
         <abp-modal-body>
             <input asp-for="Id" type="hidden" />
@@ -47,7 +45,7 @@
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-phone"></i></span>
                             <input type="tel" class="form-control" asp-for="Customer.Phone"
-                                   placeholder="5XX XXX XX XX" required />
+                                   placeholder="5XX XXX XX XX" required maxlength="10" />
                         </div>
                         <span asp-validation-for="Customer.Phone" class="text-danger"></span>
                     </div>
