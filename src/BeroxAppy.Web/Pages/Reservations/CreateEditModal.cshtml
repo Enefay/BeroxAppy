@@ -40,6 +40,9 @@
             // ABP Modal event'lerini bağla
             bindCustomerModalEvents();
 
+            // Form submit işlemini override et
+            overrideFormSubmit();
+
             // İlk hesaplama
             setTimeout(calculateTotalPrice, 100);
         }
@@ -53,7 +56,7 @@
                     $('#selectedCustomerId').val(data.responseText.id);
                 }
             });
-           
+
         }
 
         // ABP Modal ile yeni müşteri ekleme modalını aç
@@ -79,6 +82,110 @@
             $(document).off('input change', '#discountAmount, #extraAmount').on('input change', '#discountAmount, #extraAmount', function() {
                 calculateTotalPrice();
             });
+        }
+
+        // Form submit işlemini override et
+        function overrideFormSubmit() {
+            $('#reservationForm').off('submit').on('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                submitFormWithValidation();
+                return false;
+            });
+
+            // Modal'daki Save butonunu da override et
+            $('.abp-modal-footer .btn-primary').off('click').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                submitFormWithValidation();
+                return false;
+            });
+        }
+
+        // Form gönderimi ve validation kontrolü
+        function submitFormWithValidation() {
+            // Loading state
+            const saveBtn = $('.abp-modal-footer .btn-primary');
+            const originalText = saveBtn.text();
+            saveBtn.prop('disabled', true).text('Kaydediliyor...');
+
+            // Önceki hata mesajlarını temizle
+            $('.text-danger').text('');
+            $('.is-invalid').removeClass('is-invalid');
+            $('.validation-summary').remove();
+
+            // Form data'sını topla
+            const formData = $('#reservationForm').serialize();
+
+            $.ajax({
+                url: $('#reservationForm').attr('action'),
+                type: 'POST',
+                data: formData,
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Başarılı - Modal'ı kapat ve parent callback'i çağır
+                        $('#createEditModal').modal('hide');
+
+                        // Parent sayfadaki callback'i çağır
+                        if (typeof createEditModal !== 'undefined' && createEditModal.onResult) {
+                            createEditModal.onResult();
+                        }
+
+                        abp.notify.success('Rezervasyon başarıyla kaydedildi!');
+                    } else {
+                        // Validation hataları var - Modal'ı açık tut
+                        handleValidationErrors(response);
+                    }
+                },
+                error: function(xhr) {
+                    // Server hatası
+                    console.error('Server error:', xhr);
+                    abp.notify.error('Bir hata oluştu. Lütfen tekrar deneyin.');
+                },
+                complete: function() {
+                    // Loading state'i kaldır
+                    saveBtn.prop('disabled', false).text(originalText);
+                }
+            });
+        }
+
+        // Validation hatalarını işle
+        function handleValidationErrors(response) {
+            if (response.errors) {
+                // Field level validation errors
+                Object.keys(response.errors).forEach(function(fieldName) {
+                    const errors = response.errors[fieldName];
+                    if (errors && errors.length > 0) {
+                        // Field'ı bul ve hata mesajını göster
+                        const field = $(`[name="${fieldName}"]`);
+                        if (field.length > 0) {
+                            field.addClass('is-invalid');
+
+                            // Hata mesajını göster
+                            const errorSpan = field.closest('.form-group, .col-md-4, .col-md-8, .col-12').find('.text-danger');
+                            if (errorSpan.length > 0) {
+                                errorSpan.text(errors[0]);
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Genel hata mesajı
+            if (response.message) {
+                const errorHtml = `<div class="validation-summary alert alert-danger">${response.message}</div>`;
+                $('.abp-modal-body').prepend(errorHtml);
+            }
+
+            // Modal'ı en üste kaydır
+            $('.abp-modal-body').scrollTop(0);
+
+            abp.notify.error(response.message || 'Lütfen form hatalarını düzeltin.');
         }
 
         // Müşteri autocomplete fonksiyonu

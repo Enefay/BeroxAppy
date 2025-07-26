@@ -10,6 +10,8 @@ using BeroxAppy.Services;
 using BeroxAppy.Employees;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
+using Volo.Abp;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace BeroxAppy.Web.Pages.Reservations
 {
@@ -61,9 +63,107 @@ namespace BeroxAppy.Web.Pages.Reservations
 
         public async Task<IActionResult> OnPostAsync()
         {
+
+            CleanupModelStateErrors();
+
+
+            // Manuel validasyon kontrolleri
+            if (Reservation.CustomerId == Guid.Empty)
+            {
+                ModelState.AddModelError("Reservation.CustomerId", "Müşteri seçimi zorunludur.");
+            }
+
+            // Rezervasyon tarihi geçmiş tarih kontrolü
+            if (Reservation.ReservationDate.Date < DateTime.Now.Date)
+            {
+                ModelState.AddModelError("Reservation.ReservationDate", "Rezervasyon tarihi bugünden önce olamaz.");
+            }
+
+            if (Reservation.ReservationDetails == null || !Reservation.ReservationDetails.Any())
+            {
+                ModelState.AddModelError("Reservation.ReservationDetails", "En az bir hizmet eklemelisiniz.");
+            }
+            else
+            {
+                // Her hizmet detayı için kontrol
+                for (int i = 0; i < Reservation.ReservationDetails.Count; i++)
+                {
+                    var detail = Reservation.ReservationDetails[i];
+
+                    if (detail.ServiceId == Guid.Empty)
+                    {
+                        ModelState.AddModelError($"Reservation.ReservationDetails[{i}].ServiceId", $"{i + 1}. hizmet için servis seçimi zorunludur.");
+                    }
+
+                    if (detail.EmployeeId == Guid.Empty)
+                    {
+                        ModelState.AddModelError($"Reservation.ReservationDetails[{i}].EmployeeId", $"{i + 1}. hizmet için çalışan seçimi zorunludur.");
+                    }
+
+                    if (detail.StartTime == TimeSpan.Zero)
+                    {
+                        ModelState.AddModelError($"Reservation.ReservationDetails[{i}].StartTime", $"{i + 1}. hizmet için saat seçimi zorunludur.");
+                    }
+
+                    // Fiyat kontrolü - eğer CustomPrice null ise service price'ı kullan
+                    if (!detail.CustomPrice.HasValue || detail.CustomPrice <= 0)
+                    {
+                        if (detail.ServiceId != Guid.Empty)
+                        {
+                            try
+                            {
+                                var service = await _serviceAppService.GetAsync(detail.ServiceId);
+                                if (service.Price <= 0)
+                                {
+                                    ModelState.AddModelError($"Reservation.ReservationDetails[{i}].CustomPrice", $"{i + 1}. hizmet için geçerli bir fiyat giriniz.");
+                                }
+                                else
+                                {
+                                    // Service price'ı custom price olarak ata
+                                    detail.CustomPrice = service.Price;
+                                }
+                            }
+                            catch
+                            {
+                                ModelState.AddModelError($"Reservation.ReservationDetails[{i}].CustomPrice", $"{i + 1}. hizmet için fiyat bilgisi alınamadı.");
+                            }
+                        }
+                        else
+                        {
+                            ModelState.AddModelError($"Reservation.ReservationDetails[{i}].CustomPrice", $"{i + 1}. hizmet için geçerli bir fiyat giriniz.");
+                        }
+                    }
+
+                    // Çakışma kontrolü - aynı çalışanın aynı saatte başka rezervasyonu var mı?
+                    //if (detail.EmployeeId != Guid.Empty && detail.StartTime != TimeSpan.Zero)
+                    //{
+                    //    try
+                    //    {
+                    //        var conflicts = await _reservationAppService.CheckConflictsAsync(
+                    //            detail.EmployeeId,
+                    //            Reservation.ReservationDate,
+                    //            detail.StartTime,
+                    //            Reservation.Id == Guid.Empty ? null : Reservation.Id
+                    //        );
+
+                    //        if (conflicts.Any())
+                    //        {
+                    //            ModelState.AddModelError($"Reservation.ReservationDetails[{i}].StartTime",
+                    //                $"{i + 1}. hizmet için seçilen saat dolu. Lütfen başka bir saat seçiniz.");
+                    //        }
+                    //    }
+                    //    catch (Exception ex)
+                    //    {
+                    //        Logger.LogWarning(ex, "Çakışma kontrolü yapılamadı");
+                    //    }
+                    //}
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadLookups();
+
                 var errors = ModelState
                            .Where(x => x.Value.Errors.Count > 0)
                            .ToDictionary(
@@ -71,11 +171,16 @@ namespace BeroxAppy.Web.Pages.Reservations
                                kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
                            );
 
+                // Tüm hata mesajlarını birleştir
+                var allErrorMessages = errors.Values
+                    .SelectMany(errorArray => errorArray)
+                    .ToList();
+
                 return new JsonResult(new
                 {
                     success = false,
                     errors = errors,
-                    message = "Lütfen tüm gerekli alanları doldurun."
+                    message = string.Join(" ", allErrorMessages)
                 });
             }
 
@@ -94,17 +199,25 @@ namespace BeroxAppy.Web.Pages.Reservations
 
                 return new JsonResult(new { success = true });
             }
+            catch (BusinessException ex)
+            {
+                Logger.LogWarning(ex, "İş kuralı hatası: {Message}", ex.Message);
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Rezervasyon kaydedilirken hata oluştu");
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "Rezervasyon kaydedilirken bir hata oluştu: " + ex.Message
+                    message = "Rezervasyon kaydedilirken bir hata oluştu. Lütfen tekrar deneyin."
                 });
             }
         }
-
         // AJAX Handler Methods
         public async Task<IActionResult> OnGetEmployeesByServiceAsync(Guid serviceId)
         {
@@ -211,42 +324,96 @@ namespace BeroxAppy.Web.Pages.Reservations
 
 
 
+        private void CleanupModelStateErrors()
+        {
+            var keysToRemove = new List<string>();
+
+            foreach (var modelState in ModelState)
+            {
+                var errorsToRemove = new List<ModelError>();
+
+                foreach (var error in modelState.Value.Errors)
+                {
+                    // "The value '' is invalid." gibi mesajları temizle
+                    if (error.ErrorMessage.Contains("The value") && error.ErrorMessage.Contains("is invalid"))
+                    {
+                        errorsToRemove.Add(error);
+                    }
+                    // Boş string mesajları da temizle
+                    else if (string.IsNullOrWhiteSpace(error.ErrorMessage))
+                    {
+                        errorsToRemove.Add(error);
+                    }
+                }
+
+                foreach (var errorToRemove in errorsToRemove)
+                {
+                    modelState.Value.Errors.Remove(errorToRemove);
+                }
+
+                // Eğer hiç hata kalmadıysa key'i de temizle
+                if (!modelState.Value.Errors.Any())
+                {
+                    keysToRemove.Add(modelState.Key);
+                }
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                ModelState.Remove(key);
+            }
+        }
+
+
         public class ReservationViewModel
         {
             public Guid Id { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "Müşteri seçimi zorunludur.")]
             [Display(Name = "Müşteri")]
             public Guid CustomerId { get; set; }
 
             [Display(Name = "Not")]
-            public string Note { get; set; }
+            [StringLength(500, ErrorMessage = "Not en fazla 500 karakter olabilir.")]
+            public string? Note { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "Rezervasyon tarihi zorunludur.")]
             [Display(Name = "Rezervasyon Tarihi")]
+            [DataType(DataType.Date)]
             public DateTime ReservationDate { get; set; }
 
             [Display(Name = "İndirim Tutarı")]
-            [Range(0, double.MaxValue, ErrorMessage = "İndirim tutarı negatif olamaz")]
+            [Range(0, double.MaxValue, ErrorMessage = "İndirim tutarı negatif olamaz.")]
             public decimal? DiscountAmount { get; set; }
 
             [Display(Name = "Ekstra Tutar")]
-            [Range(0, double.MaxValue, ErrorMessage = "Ekstra tutar negatif olamaz")]
+            [Range(0, double.MaxValue, ErrorMessage = "Ekstra tutar negatif olamaz.")]
             public decimal? ExtraAmount { get; set; }
 
             [Display(Name = "Adisyon / Rezervasyonsuz Müşteri")]
             public bool IsWalkIn { get; set; }
 
+            [Required(ErrorMessage = "En az bir hizmet eklemelisiniz.")]
+            [MinLength(1, ErrorMessage = "En az bir hizmet eklemelisiniz.")]
             public List<ReservationDetailViewModel> ReservationDetails { get; set; } = new();
         }
 
         public class ReservationDetailViewModel
         {
+            [Required(ErrorMessage = "Hizmet seçimi zorunludur.")]
             public Guid ServiceId { get; set; }
+
+            [Required(ErrorMessage = "Çalışan seçimi zorunludur.")]
             public Guid EmployeeId { get; set; }
+
+            [Required(ErrorMessage = "Saat seçimi zorunludur.")]
             public TimeSpan StartTime { get; set; }
+
+            [Range(0.01, double.MaxValue, ErrorMessage = "Geçerli bir fiyat giriniz.")]
             public decimal? CustomPrice { get; set; }
-            public string Note { get; set; }
+
+            [StringLength(200, ErrorMessage = "Hizmet notu en fazla 200 karakter olabilir.")]
+            public string? Note { get; set; }
         }
     }
 }
