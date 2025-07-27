@@ -13,5 +13,9 @@ public class BeroxAppyWebAutoMapperProfile : Profile
         CreateMap<ReservationViewModel, CreateReservationDto>()
             .ForMember(dest => dest.ReservationDetails, opt => opt.MapFrom(src => src.ReservationDetails)); // Child map varsa
         CreateMap<ReservationDetailViewModel, CreateReservationDetailDto>();
+
+        CreateMap<ReservationDto, ReservationViewModel>();
+
+        CreateMap<ReservationDetailDto, ReservationDetailViewModel>();
     }
 }

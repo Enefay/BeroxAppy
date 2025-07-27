@@ -4,6 +4,16 @@
 var reservationDetailModal = new abp.ModalManager('/Reservations/ReservationDetailModal');
 var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEditModal');
 
+
+reservations.openEditModal = function (reservationId) {
+    createEditModal.open({ id: reservationId });
+};
+
+reservations.customerArrived = function (reservationId) {
+    abp.notify.info('Özellik eklenecek');
+};
+
+
 (function () {
     let calendar;
 

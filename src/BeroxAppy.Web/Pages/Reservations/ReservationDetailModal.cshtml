@@ -55,6 +55,25 @@
         }
     </abp-modal-body>
     <abp-modal-footer>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+
+        <button type="button"
+                class="btn btn-primary me-2"
+                onclick="reservations.openEditModal('@Model.Reservation.Id')">
+            Rezervasyonu Düzenle
+        </button>
+
+        <!-- Customer Arrived -->
+        <button type="button"
+                class="btn btn-success me-2"
+                onclick="reservations.customerArrived('@Model.Reservation.Id')">
+            Müşteri Geldi
+
+        </button>
+
+        <!-- Close -->
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Kapat
+        </button>
+
     </abp-modal-footer>
 </abp-modal>
