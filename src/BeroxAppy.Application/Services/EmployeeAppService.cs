@@ -454,7 +454,7 @@ namespace BeroxAppy.Employees
         /// <summary>
         /// Çalışan Arama
         /// </summary>
-        public async Task<List<EmployeeDto>> GetEmployeesByServiceAsync(Guid serviceId,string? query, int maxResultCount = 5)
+        public async Task<List<EmployeeDto>> GetEmployeesByServiceandQueryAsync(Guid serviceId,string? query, int maxResultCount = 5)
         {
             var queryable = await _employeeServiceRepository.GetQueryableAsync();
             var employeeQueryable = await Repository.GetQueryableAsync();

@@ -1,6 +1,7 @@
 ﻿@page
 @using BeroxAppy.Localization
 @using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Enums
 @model BeroxAppy.Web.Pages.Reservations.ReservationDetailModalModel
 @inject IHtmlLocalizer<BeroxAppyResource> L
 @{
@@ -11,21 +12,54 @@
     <abp-modal-body>
         @if (Model.Reservation != null)
         {
-            <div class="mb-3">
-                <strong>Müşteri:</strong> @Model.Reservation.CustomerName <br />
-                <strong>Telefon:</strong> @Model.Reservation.CustomerPhone <br />
-                <strong>Tarih:</strong> @Model.Reservation.ReservationDate.ToString("dd.MM.yyyy") <br />
-                <strong>Saat:</strong> @Model.Reservation.ReservationTimeDisplay <br />
-                <strong>Durum:</strong> <span class="badge bg-@Model.GetStatusBadgeColor()">@Model.Reservation.StatusDisplay</span> <br />
-                <strong>Ödeme:</strong> <span class="badge bg-@Model.GetPaymentBadgeColor()">@Model.Reservation.PaymentStatusDisplay</span> <br />
-                <strong>Toplam:</strong> ₺@Model.Reservation.FinalPrice.ToString("F2")
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Müşteri:</strong> @Model.Reservation.CustomerName <br />
+                    <strong>Telefon:</strong> @Model.Reservation.CustomerPhone <br />
+                    <strong>Tarih:</strong> @Model.Reservation.ReservationDate.ToString("dd.MM.yyyy") <br />
+                    <strong>Saat:</strong> @Model.Reservation.ReservationTimeDisplay <br />
+                </div>
+                <div class="col-md-6">
+                    <strong>Durum:</strong> <span class="badge bg-@Model.GetStatusBadgeColor()">@Model.Reservation.StatusDisplay</span> <br />
+                    <strong>Ödeme:</strong> <span class="badge bg-@Model.GetPaymentBadgeColor()">@Model.Reservation.PaymentStatusDisplay</span> <br />
+                    <strong>Tip:</strong> @Model.Reservation.ReservationTypeDisplay <br />
+                    <strong>Toplam:</strong> <span class="h5 text-primary">₺@Model.Reservation.FinalPrice.ToString("F2")</span>
+                </div>
             </div>
+
+            <!-- Ödeme Durumu Detayı (Eğer Arrived ise) -->
+            @if (Model.Reservation.Status == ReservationStatus.Arrived)
+            {
+                <div class="alert alert-info mb-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Ödenen:</strong> ₺@Model.PaidAmount.ToString("N2")
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Kalan:</strong> ₺@Model.RemainingAmount.ToString("N2")
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Durum:</strong>
+                            @if (Model.RemainingAmount <= 0)
+                            {
+                                <span class="badge bg-success">Tamamlandı</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Eksik Ödeme</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
             <h6 class="mt-3">Hizmetler</h6>
             <table class="table table-sm table-bordered">
-                <thead>
+                <thead class="table-light">
                     <tr>
                         <th>Hizmet</th>
                         <th>Çalışan</th>
+                        <th>Saat</th>
                         <th>Not</th>
                         <th>Fiyat</th>
                     </tr>
@@ -36,16 +70,78 @@
                         <tr>
                             <td>@detail.ServiceTitle</td>
                             <td>@detail.EmployeeName</td>
+                            <td>@detail.TimeDisplay</td>
                             <td>@detail.Note</td>
                             <td>₺@detail.ServicePrice.ToString("F2")</td>
                         </tr>
                     }
                 </tbody>
             </table>
+
+            <!-- Fiyat Ayrıntıları -->
+            @if (Model.Reservation.DiscountAmount.HasValue || Model.Reservation.ExtraAmount.HasValue)
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Fiyat Ayrıntıları</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Hizmet Toplamı:</strong> ₺@Model.Reservation.TotalServicePrice.ToString("N2")
+                            </div>
+                            @if (Model.Reservation.DiscountAmount.HasValue && Model.Reservation.DiscountAmount > 0)
+                            {
+                                <div class="col-md-4">
+                                    <strong>İndirim:</strong> <span class="text-success">-₺@Model.Reservation.DiscountAmount.Value.ToString("N2")</span>
+                                </div>
+                            }
+                            @if (Model.Reservation.ExtraAmount.HasValue && Model.Reservation.ExtraAmount > 0)
+                            {
+                                <div class="col-md-4">
+                                    <strong>Ek Ücret:</strong> <span class="text-warning">+₺@Model.Reservation.ExtraAmount.Value.ToString("N2")</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
             @if (!string.IsNullOrEmpty(Model.Reservation.Note))
             {
                 <div class="mt-3">
                     <strong>Not:</strong> @Model.Reservation.Note
+                </div>
+            }
+
+            <!-- Ödeme Geçmişi (Eğer varsa) -->
+            @if (Model.PaymentHistory.Any())
+            {
+                <h6 class="mt-4">Ödeme Geçmişi</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Tutar</th>
+                                <th>Yöntem</th>
+                                <th>Açıklama</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in Model.PaymentHistory)
+                            {
+                                <tr>
+                                    <td>@payment.PaymentDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td class="@(payment.IsRefund ? "text-danger" : "text-success")">
+                                        @payment.AmountDisplay
+                                    </td>
+                                    <td>@payment.PaymentMethodDisplay</td>
+                                    <td>@payment.Description</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             }
         }
@@ -55,25 +151,69 @@
         }
     </abp-modal-body>
     <abp-modal-footer>
+        @if (Model.Reservation?.Status == ReservationStatus.Pending)
+        {
+            <!-- Müşteri Geldi ve Rezervasyonu Tamamla -->
+            <button type="button"
+                    class="btn btn-success me-2"
+                    onclick="reservations.completeReservation('@Model.Reservation.Id')">
+                <i class="fas fa-check-circle"></i> Müşteri Geldi & Tamamla
+            </button>
 
+            <!-- Sadece Geldi İşaretle -->
+            <button type="button"
+                    class="btn btn-info me-2"
+                    onclick="reservations.markAsArrived('@Model.Reservation.Id')">
+                <i class="fas fa-user-check"></i> Sadece Geldi İşaretle
+            </button>
+
+            <!-- Gelmedi İşaretle -->
+            <button type="button"
+                    class="btn btn-warning me-2"
+                    onclick="reservations.markAsNoShow('@Model.Reservation.Id')">
+                <i class="fas fa-user-times"></i> Gelmedi
+            </button>
+        }
+
+        @if (Model.Reservation?.Status == ReservationStatus.Arrived)
+        {
+            @if (Model.RemainingAmount > 0)
+            {
+                <!-- Eksik ödeme varsa tamamla -->
+                <button type="button"
+                        class="btn btn-success me-2"
+                        onclick="reservations.completeReservation('@Model.Reservation.Id')">
+                    <i class="fas fa-credit-card"></i> Ödemeli Tamamla
+                </button>
+            }
+            else
+            {
+                <!-- Sadece düzenleme -->
+                <button type="button"
+                        class="btn btn-primary me-2"
+                        onclick="reservations.openEditModal('@Model.Reservation.Id')">
+                    <i class="fas fa-edit"></i> Düzenle
+                </button>
+            }
+
+            <!-- Ek ödeme al -->
+         @*    <button type="button"
+                    class="btn btn-outline-success me-2"
+                    onclick="reservations.addPayment('@Model.Reservation.Id')">
+                <i class="fas fa-plus"></i> Ek Ödeme
+            </button> *@
+        }
+
+        <!-- Her durumda düzenleme -->
         <button type="button"
                 class="btn btn-primary me-2"
                 onclick="reservations.openEditModal('@Model.Reservation.Id')">
-            Rezervasyonu Düzenle
+            <i class="fas fa-edit"></i> Rezervasyonu Düzenle
         </button>
 
-        <!-- Customer Arrived -->
-        <button type="button"
-                class="btn btn-success me-2"
-                onclick="reservations.customerArrived('@Model.Reservation.Id')">
-            Müşteri Geldi
-
-        </button>
-
-        <!-- Close -->
+        <!-- Kapat -->
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            Kapat
+            <i class="fas fa-times"></i> Kapat
         </button>
-
     </abp-modal-footer>
 </abp-modal>

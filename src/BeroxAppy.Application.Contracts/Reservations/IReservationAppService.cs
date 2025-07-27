@@ -153,6 +153,12 @@ namespace BeroxAppy.Reservations
         /// Çalışan performans raporu
         /// </summary>
         Task<EmployeePerformanceReportDto> GetEmployeePerformanceAsync(Guid employeeId, DateTime startDate, DateTime endDate);
+
+
+        /// <summary>
+        /// Rezervasyon tamamlama
+        /// </summary>
+        Task<ReservationDto> CompleteReservationAsync(CompleteReservationDto input);
     }
 
     // UpdateReservationDetailDto.cs

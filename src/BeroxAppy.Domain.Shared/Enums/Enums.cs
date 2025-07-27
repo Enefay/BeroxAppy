@@ -30,11 +30,12 @@ namespace BeroxAppy.Enums
 
     public enum PaymentMethod
     {
-        Cash = 0,
-        CreditCard = 1,
-        DebitCard = 2,
-        Transfer = 3,
-        Other = 4
+        Cash = 0, //Nakit
+        CreditCard = 1, //Kredi Kartı
+        DebitCard = 2, //Banka Kartı
+        BankTransfer =3, //Havale/EFT
+        Check =4, //Çek
+        Other = 5 //Diğer
     }
 
     public enum PaymentStatus

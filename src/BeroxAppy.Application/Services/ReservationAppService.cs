@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BeroxAppy.Customers;
 using BeroxAppy.Employees;
 using BeroxAppy.Enums;
+using BeroxAppy.Finances;
 using BeroxAppy.Services;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
@@ -21,6 +22,7 @@ namespace BeroxAppy.Reservations
         private readonly IRepository<Employee, Guid> _employeeRepository;
         private readonly IRepository<Service, Guid> _serviceRepository;
         private readonly IRepository<EmployeeWorkingHours, Guid> _workingHoursRepository;
+        private readonly IPaymentAppService _paymentAppService;
 
         public ReservationAppService(
             IRepository<Reservation, Guid> reservationRepository,
@@ -28,7 +30,8 @@ namespace BeroxAppy.Reservations
             IRepository<Customer, Guid> customerRepository,
             IRepository<Employee, Guid> employeeRepository,
             IRepository<Service, Guid> serviceRepository,
-            IRepository<EmployeeWorkingHours, Guid> workingHoursRepository)
+            IRepository<EmployeeWorkingHours, Guid> workingHoursRepository,
+            IPaymentAppService paymentAppService)
         {
             _reservationRepository = reservationRepository;
             _reservationDetailRepository = reservationDetailRepository;
@@ -36,6 +39,7 @@ namespace BeroxAppy.Reservations
             _employeeRepository = employeeRepository;
             _serviceRepository = serviceRepository;
             _workingHoursRepository = workingHoursRepository;
+            _paymentAppService = paymentAppService;
         }
 
         // =============== TEMEL CRUD ===============
@@ -1058,5 +1062,83 @@ namespace BeroxAppy.Reservations
 
             return report;
         }
+
+
+        public async Task<ReservationDto> CompleteReservationAsync(CompleteReservationDto input)
+        {
+            var reservation = await _reservationRepository.GetAsync(input.ReservationId);
+
+            // 1. Hizmet fiyatlarını güncelle
+            foreach (var change in input.ServiceChanges)
+            {
+                var detail = await _reservationDetailRepository.GetAsync(change.ReservationDetailId);
+                if (detail.ServicePrice != change.NewPrice)
+                {
+                    detail.ServicePrice = change.NewPrice;
+
+                    // Komisyon yeniden hesapla
+                    var employee = await _employeeRepository.GetAsync(detail.EmployeeId);
+                    detail.CommissionAmount = change.NewPrice * employee.ServiceCommissionRate / 100;
+
+                    await _reservationDetailRepository.UpdateAsync(detail);
+                }
+            }
+
+            // 2. Ek indirim/ücret güncelle
+            var currentDiscount = reservation.DiscountAmount ?? 0;
+            var currentExtra = reservation.ExtraAmount ?? 0;
+
+            if (input.AdditionalDiscount != currentDiscount)
+            {
+                reservation.DiscountAmount = input.AdditionalDiscount;
+
+                // İndirim nedenini nota ekle
+                if (!string.IsNullOrWhiteSpace(input.DiscountReason))
+                {
+                    var discountNote = $"İndirim: {input.DiscountReason} (₺{input.AdditionalDiscount})";
+                    reservation.Note = string.IsNullOrWhiteSpace(reservation.Note)
+                        ? discountNote
+                        : reservation.Note + " | " + discountNote;
+                }
+            }
+
+            if (input.AdditionalCharge != currentExtra)
+            {
+                reservation.ExtraAmount = input.AdditionalCharge;
+
+                // Ek ücret nedenini nota ekle
+                if (!string.IsNullOrWhiteSpace(input.ChargeReason))
+                {
+                    var chargeNote = $"Ek ücret: {input.ChargeReason} (₺{input.AdditionalCharge})";
+                    reservation.Note = string.IsNullOrWhiteSpace(reservation.Note)
+                        ? chargeNote
+                        : reservation.Note + " | " + chargeNote;
+                }
+            }
+
+            // 3. Fiyatları yeniden hesapla
+            await RecalculatePricesAsync(input.ReservationId);
+
+            // 4. Rezervasyon durumunu güncelle
+            reservation.Status = ReservationStatus.Arrived;
+            await _reservationRepository.UpdateAsync(reservation);
+
+            // 5. Ödeme kaydet
+            if (input.PaymentAmount > 0)
+            {
+                var paymentDto = new CreateReservationPaymentDto
+                {
+                    ReservationId = input.ReservationId,
+                    Amount = input.PaymentAmount,
+                    PaymentMethod = input.PaymentMethod,
+                    Description = input.PaymentNote ?? $"Rezervasyon tamamlama ödemesi - {DateTime.Now:dd.MM.yyyy HH:mm}"
+                };
+
+                await _paymentAppService.CreateReservationPaymentAsync(paymentDto);
+            }
+
+            return await GetAsync(input.ReservationId);
+        }
+
     }
 }

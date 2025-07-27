@@ -1,0 +1,360 @@
+﻿@page
+@using BeroxAppy.Localization
+@using Microsoft.AspNetCore.Mvc.Localization
+@using BeroxAppy.Enums
+@model BeroxAppy.Web.Pages.Reservations.CompleteReservationModalModel
+@inject IHtmlLocalizer<BeroxAppyResource> L
+@{
+    Layout = null;
+}
+
+<abp-modal size="Large">
+    <abp-modal-header title="Rezervasyonu Tamamla"></abp-modal-header>
+    <abp-modal-body>
+        <form id="completeReservationForm">
+            <input type="hidden" id="reservationId" value="@Model.ReservationId" />
+
+            <!-- Rezervasyon Özeti -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> Rezervasyon Bilgileri</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Müşteri:</strong> @Model.Reservation.CustomerName<br />
+                            <strong>Telefon:</strong> @Model.Reservation.CustomerPhone<br />
+                            <strong>Tarih:</strong> @Model.Reservation.ReservationDate.ToString("dd.MM.yyyy")<br />
+                            <strong>Saat:</strong> @Model.Reservation.ReservationTimeDisplay
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Toplam Tutar:</strong> <span class="h5 text-primary">₺@Model.Reservation.FinalPrice.ToString("N2")</span><br />
+                            <strong>Ödenen:</strong> <span class="text-success">₺@Model.PaidAmount.ToString("N2")</span><br />
+                            <strong>Kalan:</strong> <span class="text-danger">₺@Model.RemainingAmount.ToString("N2")</span><br />
+                            @if (Model.CustomerDiscountRate > 0)
+                            {
+                                <strong>Müşteri İndirimi:</strong> <span class="text-info">%@Model.CustomerDiscountRate.ToString("N1")</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hizmet Detayları -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-list"></i> Hizmet Detayları</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Hizmet</th>
+                                    <th>Çalışan</th>
+                                    <th>Süre</th>
+                                    <th>Fiyat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var detail in Model.Reservation.ReservationDetails)
+                                {
+                                    <tr>
+                                        <td>@detail.ServiceTitle</td>
+                                        <td>@detail.EmployeeName</td>
+                                        <td>@detail.DurationDisplay</td>
+                                        <td>
+                                            ₺@detail.ServicePrice.ToString("N2")
+                                            <input type="hidden"
+                                                   class="service-price-input"
+                                                   value="@detail.ServicePrice.ToString("N2")"
+                                                   data-detail-id="@detail.Id" />
+                                        </td>
+
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ek İndirim/Ücret -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-percentage"></i> Ek İndirim</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">İndirim Tutarı (₺)</label>
+                                <input type="number" id="additionalDiscount" class="form-control"
+                                       value="@(Model.Reservation.DiscountAmount ?? 0)"
+                                       min="0" step="0.01" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">İndirim Nedeni</label>
+                                <input type="text" id="discountReason" class="form-control"
+                                       placeholder="İndirim sebebi..." />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="fas fa-plus"></i> Ek Ücret</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Ek Ücret (₺)</label>
+                                <input type="number" id="additionalCharge" class="form-control"
+                                       value="@(Model.Reservation.ExtraAmount ?? 0)"
+                                       min="0" step="0.01" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Ek Ücret Nedeni</label>
+                                <input type="text" id="chargeReason" class="form-control"
+                                       placeholder="Ek ücret sebebi..." />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Güncellenmiş Toplam -->
+            <div class="alert alert-info">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Hizmet Toplamı:</strong> <span id="serviceTotal">₺@Model.Reservation.TotalServicePrice.ToString("N2")</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>İndirim/Ek Ücret:</strong> <span id="adjustmentTotal">₺0.00</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>YENİ TOPLAM:</strong> <span id="finalTotal" class="h5 text-primary">₺@Model.Reservation.FinalPrice.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ödeme Bilgileri -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fas fa-credit-card"></i> Ödeme Bilgileri</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ödeme Tutarı (₺) <span class="text-danger">*</span></label>
+                                <input type="number" id="paymentAmount" class="form-control"
+                                       value="@Model.RemainingAmount"
+                                       min="0" step="0.01" required />
+                                <div class="form-text">Kalan tutar: ₺<span id="remainingAmount">@Model.RemainingAmount.ToString("N2")</span></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ödeme Yöntemi <span class="text-danger">*</span></label>
+                                <select id="paymentMethod" class="form-select" required>
+                                    <option value="">Seçiniz</option>
+                                    <option value="0">Nakit</option>
+                                    <option value="1">Kredi Kartı</option>
+                                    <option value="2">Banka Kartı</option>
+                                    <option value="3">Havale/EFT</option>
+                                    <option value="4">Çek</option>
+                                    <option value="5">Diğer</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ödeme Durumu</label>
+                                <select id="paymentStatus" class="form-select">
+                                    <option value="1">Kısmi Ödeme</option>
+                                    <option value="2" selected>Tam Ödeme</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ödeme Notu</label>
+                        <textarea id="paymentNote" class="form-control" rows="2"
+                                  placeholder="Ödeme ile ilgili notlar..."></textarea>
+                    </div>
+
+                    <!-- Tam Ödeme Yapılmadıysa Borç Uyarısı -->
+                    <div id="debtWarning" class="alert alert-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Kalan tutar müşteri borcuna eklenecektir.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mevcut Ödemeler -->
+            @if (Model.ExistingPayments.Any())
+            {
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-history"></i> Önceki Ödemeler</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Tarih</th>
+                                        <th>Tutar</th>
+                                        <th>Yöntem</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in Model.ExistingPayments)
+                                    {
+                                        <tr>
+                                            <td>@payment.PaymentDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>₺@payment.Amount.ToString("N2")</td>
+                                            <td>@payment.PaymentMethodDisplay</td>
+                                            <td>@payment.Description</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </form>
+    </abp-modal-body>
+    <abp-modal-footer>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> İptal
+        </button>
+        <button type="button" class="btn btn-success" id="completeReservationBtn">
+            <i class="fas fa-check"></i> Rezervasyonu Tamamla
+        </button>
+    </abp-modal-footer>
+</abp-modal>
+
+<script>
+    $(function() {
+        // Fiyat hesaplamaları
+        function calculateTotals() {
+            let serviceTotal = 0;
+            $('.service-price-input').each(function() {
+                serviceTotal += parseFloat($(this).val()) || 0;
+            });
+
+            const discount = parseFloat($('#additionalDiscount').val()) || 0;
+            const charge = parseFloat($('#additionalCharge').val()) || 0;
+            const adjustment = charge - discount;
+            const finalTotal = serviceTotal + adjustment;
+
+            $('#serviceTotal').text('₺' + serviceTotal.toFixed(2));
+            $('#adjustmentTotal').text((adjustment >= 0 ? '+' : '') + '₺' + adjustment.toFixed(2));
+            $('#finalTotal').text('₺' + finalTotal.toFixed(2));
+
+            // Kalan tutarı güncelle
+            const paidAmount = @Model.PaidAmount;
+            const remaining = Math.max(0, finalTotal - paidAmount);
+            $('#remainingAmount').text(remaining.toFixed(2));
+            $('#paymentAmount').val(remaining.toFixed(2));
+
+            // Borç uyarısı
+            const paymentAmount = parseFloat($('#paymentAmount').val()) || 0;
+            if (paymentAmount < remaining) {
+                $('#debtWarning').show();
+                $('#paymentStatus').val('1'); // Partial
+            } else {
+                $('#debtWarning').hide();
+                $('#paymentStatus').val('2'); // Paid
+            }
+        }
+
+        // Event listeners
+        $('.service-price-input, #additionalDiscount, #additionalCharge').on('input', calculateTotals);
+        $('#paymentAmount').on('input', function() {
+            const remaining = parseFloat($('#remainingAmount').text());
+            const paymentAmount = parseFloat($(this).val()) || 0;
+
+            if (paymentAmount < remaining) {
+                $('#debtWarning').show();
+                $('#paymentStatus').val('1');
+            } else {
+                $('#debtWarning').hide();
+                $('#paymentStatus').val('2');
+            }
+        });
+
+        // Rezervasyonu tamamla
+        $('#completeReservationBtn').click(function() {
+            const form = $('#completeReservationForm');
+            if (!form[0].checkValidity()) {
+                form[0].reportValidity();
+                return;
+            }
+
+            const paymentAmount = parseFloat($('#paymentAmount').val()) || 0;
+            if (paymentAmount <= 0) {
+                abp.notify.error('Ödeme tutarı 0\'dan büyük olmalıdır!');
+                return;
+            }
+
+            // Hizmet fiyat değişikliklerini topla
+            const serviceChanges = [];
+            $('.service-price-input').each(function() {
+                const detailId = $(this).data('detail-id');
+                const newPrice = parseFloat($(this).val()) || 0;
+                serviceChanges.push({
+                    reservationDetailId: detailId,
+                    newPrice: newPrice
+                });
+            });
+
+            const data = {
+                reservationId: $('#reservationId').val(),
+                serviceChanges: serviceChanges,
+                additionalDiscount: parseFloat($('#additionalDiscount').val()) || 0,
+                discountReason: $('#discountReason').val(),
+                additionalCharge: parseFloat($('#additionalCharge').val()) || 0,
+                chargeReason: $('#chargeReason').val(),
+                paymentAmount: paymentAmount,
+                paymentMethod: parseInt($('#paymentMethod').val()),
+                paymentNote: $('#paymentNote').val()
+            };
+
+            abp.ui.setBusy('.modal-content');
+
+            $.ajax({
+                url: '/api/app/reservation/complete-reservation',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(result) {
+                    abp.notify.success('Rezervasyon başarıyla tamamlandı!');
+                    $('#completeReservationModal').modal('hide');
+                    // Rezervasyon listesini yenile
+                    if (typeof calendar !== 'undefined') {
+                        calendar.refetchEvents();
+                    }
+                    if (typeof loadDailySummary === 'function') {
+                        loadDailySummary();
+                    }
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error?.message || 'Bir hata oluştu!';
+                    abp.notify.error(error);
+                },
+                complete: function() {
+                    abp.ui.clearBusy('.modal-content');
+                }
+            });
+        });
+
+        // İlk hesaplama
+        calculateTotals();
+    });
+
+</script>

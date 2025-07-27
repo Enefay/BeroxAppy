@@ -3,15 +3,111 @@
 // ABP ModalManager ile Razor Page modalını tanımla
 var reservationDetailModal = new abp.ModalManager('/Reservations/ReservationDetailModal');
 var createEditModal = new abp.ModalManager(abp.appPath + 'Reservations/CreateEditModal');
+var completeReservationModal = new abp.ModalManager('/Reservations/CompleteReservationModal');
 
 
 reservations.openEditModal = function (reservationId) {
     createEditModal.open({ id: reservationId });
 };
 
-reservations.customerArrived = function (reservationId) {
-    abp.notify.info('Özellik eklenecek');
+reservations.completeReservation = function (reservationId) {
+    completeReservationModal.open({ id: reservationId });
 };
+
+reservations.markAsArrived = function (reservationId) {
+    abp.message.confirm(
+        'Müşteri geldi olarak işaretlenecek. Devam edilsin mi?',
+        'Onay',
+        function (confirmed) {
+            if (confirmed) {
+                $.ajax({
+                    url: `/api/app/reservation/${reservationId}/mark-as-arrived`,
+                    type: 'POST',
+                    success: function () {
+                        abp.notify.success('Müşteri geldi olarak işaretlendi!');
+                        reservationDetailModal.close();
+                        if (typeof calendar !== 'undefined') {
+                            calendar.refetchEvents();
+                        }
+                        if (typeof loadDailySummary === 'function') {
+                            loadDailySummary();
+                        }
+                    },
+                    error: function (xhr) {
+                        const error = xhr.responseJSON?.error?.message || 'Bir hata oluştu!';
+                        abp.notify.error(error);
+                    }
+                });
+            }
+        }
+    );
+};
+
+reservations.markAsNoShow = function (reservationId) {
+    abp.message.confirm(
+        'Müşteri gelmedi olarak işaretlenecek. Bu işlem geri alınamaz!',
+        'Uyarı',
+        function (confirmed) {
+            if (confirmed) {
+                $.ajax({
+                    url: `/api/app/reservation/${reservationId}/mark-as-no-show`,
+                    type: 'POST',
+                    success: function () {
+                        abp.notify.warn('Müşteri gelmedi olarak işaretlendi!');
+                        reservationDetailModal.close();
+                        if (typeof calendar !== 'undefined') {
+                            calendar.refetchEvents();
+                        }
+                        if (typeof loadDailySummary === 'function') {
+                            loadDailySummary();
+                        }
+                    },
+                    error: function (xhr) {
+                        const error = xhr.responseJSON?.error?.message || 'Bir hata oluştu!';
+                        abp.notify.error(error);
+                    }
+                });
+            }
+        }
+    );
+};
+
+//reservations.addPayment = function (reservationId) {
+//    // Ek ödeme modalı açılabilir (basit bir prompt ile başlayalım)
+//    abp.message.prompt(
+//        'Ek ödeme tutarını giriniz:',
+//        'Ek Ödeme',
+//        function (amount) {
+//            if (amount && parseFloat(amount) > 0) {
+//                const paymentData = {
+//                    reservationId: reservationId,
+//                    amount: parseFloat(amount),
+//                    paymentMethod: 0, // Cash - default
+//                    description: 'Ek ödeme'
+//                };
+
+//                $.ajax({
+//                    url: '/api/app/payment/reservation-payment',
+//                    type: 'POST',
+//                    contentType: 'application/json',
+//                    data: JSON.stringify(paymentData),
+//                    success: function () {
+//                        abp.notify.success('Ödeme başarıyla kaydedildi!');
+//                        reservationDetailModal.close();
+//                        // Modalı yeniden aç
+//                        setTimeout(() => {
+//                            reservationDetailModal.open({ id: reservationId });
+//                        }, 500);
+//                    },
+//                    error: function (xhr) {
+//                        const error = xhr.responseJSON?.error?.message || 'Ödeme kaydedilemedi!';
+//                        abp.notify.error(error);
+//                    }
+//                });
+//            }
+//        }
+//    );
+//};
 
 
 (function () {

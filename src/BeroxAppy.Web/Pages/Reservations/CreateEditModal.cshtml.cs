@@ -351,7 +351,7 @@ namespace BeroxAppy.Web.Pages.Reservations
         {
             try
             {
-                var employees = await _employeeAppService.GetEmployeesByServiceAsync(serviceId, query, 5);
+                var employees = await _employeeAppService.GetEmployeesByServiceandQueryAsync(serviceId, query, 5);
 
                 var result = employees.Select(e => new
                 {
