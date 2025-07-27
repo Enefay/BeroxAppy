@@ -21,6 +21,8 @@ reservations.customerArrived = function (reservationId) {
     $(function () {
 
         abp.event.on('app.reservation.saved', function (response) {
+
+            reservationDetailModal.close();
             calendar.refetchEvents();
             loadDailySummary();
             loadUpcomingReservations();
