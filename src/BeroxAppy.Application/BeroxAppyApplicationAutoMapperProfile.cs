@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using BeroxAppy.Customers;
 using BeroxAppy.Employees;
+using BeroxAppy.Finance;
+using BeroxAppy.Finances;
 using BeroxAppy.Reservations;
 using BeroxAppy.Services;
 using Volo.Abp.AutoMapper;
@@ -91,5 +93,12 @@ public class BeroxAppyApplicationAutoMapperProfile : Profile
         // Eğer ReservationDetail için de kullanıyorsan:
         CreateMap<ReservationDetail, ReservationDetailDto>();
         CreateMap<ReservationDetailDto, ReservationDetail>();
+
+
+        //payment
+        CreateMap<Payment, PaymentDto>().ReverseMap();
+        CreateMap<CashRegister, CashRegisterDto>().ReverseMap();
+
+
     }
 }

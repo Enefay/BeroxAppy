@@ -36,6 +36,9 @@ namespace BeroxAppy.Web.Pages.Reservations
             ReservationId = id;
             Reservation = await _reservationAppService.GetAsync(id);
 
+            System.Diagnostics.Debug.WriteLine($"DiscountAmount: {Reservation.DiscountAmount}");
+            System.Diagnostics.Debug.WriteLine($"ExtraAmount: {Reservation.ExtraAmount}");
+
             // Ödeme bilgilerini al
             PaidAmount = await _paymentAppService.GetReservationPaidAmountAsync(id);
             RemainingAmount = await _paymentAppService.GetReservationRemainingAmountAsync(id);

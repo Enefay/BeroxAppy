@@ -90,7 +90,7 @@
                             <div class="mb-3">
                                 <label class="form-label">İndirim Tutarı (₺)</label>
                                 <input type="number" id="additionalDiscount" class="form-control"
-                                       value="@(Model.Reservation.DiscountAmount ?? 0)"
+                                       value="@((Model.Reservation.DiscountAmount ?? 0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
                                        min="0" step="0.01" />
                             </div>
                         </div>
@@ -105,7 +105,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Ek Ücret (₺)</label>
                                 <input type="number" id="additionalCharge" class="form-control"
-                                       value="@(Model.Reservation.ExtraAmount ?? 0)"
+                                       value="@((Model.Reservation.ExtraAmount ?? 0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
                                        min="0" step="0.01" />
                             </div>
                         </div>
@@ -227,34 +227,69 @@
         </button>
     </abp-modal-footer>
 </abp-modal>
-
 <script>
     $(function() {
-        // Fiyat hesaplamaları
+        // Global değişkenler
+        let originalServiceTotal = 0;
+        let originalDiscountAmount = 0;
+        let originalExtraAmount = 0;
+
+        // Sayfa yüklendiğinde değerleri al
+        function initializeValues() {
+            originalServiceTotal = parseFloat('@Model.Reservation.TotalServicePrice') || 0;
+            originalDiscountAmount = parseFloat('@((Model.Reservation.DiscountAmount ?? 0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))') || 0;
+            originalExtraAmount = parseFloat('@((Model.Reservation.ExtraAmount ?? 0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))') || 0;
+
+            calculateTotals();
+        }
+
+        // Fiyat hesaplamaları - DÜZELTİLMİŞ
         function calculateTotals() {
+            // Hizmet fiyatlarını topla (değiştirilmiş olanları)
             let serviceTotal = 0;
             $('.service-price-input').each(function() {
-                serviceTotal += parseFloat($(this).val()) || 0;
+                const value = parseFloat($(this).val()) || 0;
+                serviceTotal += value;
             });
 
+            // İndirim ve ek ücret
             const discount = parseFloat($('#additionalDiscount').val()) || 0;
             const charge = parseFloat($('#additionalCharge').val()) || 0;
+
+            // Net ayarlama (ek ücret - indirim)
             const adjustment = charge - discount;
-            const finalTotal = serviceTotal + adjustment;
+            const finalTotal = Math.max(0, serviceTotal + adjustment);
 
-            $('#serviceTotal').text('₺' + serviceTotal.toFixed(2));
-            $('#adjustmentTotal').text((adjustment >= 0 ? '+' : '') + '₺' + adjustment.toFixed(2));
-            $('#finalTotal').text('₺' + finalTotal.toFixed(2));
+            // UI güncelle
+            $('#serviceTotal').text('₺' + serviceTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2}));
 
-            // Kalan tutarı güncelle
-            const paidAmount = @Model.PaidAmount;
+            if (adjustment >= 0) {
+                $('#adjustmentTotal').text('+₺' + adjustment.toLocaleString('tr-TR', {minimumFractionDigits: 2}));
+                $('#adjustmentTotal').removeClass('text-danger').addClass('text-success');
+            } else {
+                $('#adjustmentTotal').text('₺' + adjustment.toLocaleString('tr-TR', {minimumFractionDigits: 2}));
+                $('#adjustmentTotal').removeClass('text-success').addClass('text-danger');
+            }
+
+            $('#finalTotal').text('₺' + finalTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2}));
+
+            // Kalan tutarı hesapla
+            const paidAmount = parseFloat('@Model.PaidAmount') || 0;
             const remaining = Math.max(0, finalTotal - paidAmount);
-            $('#remainingAmount').text(remaining.toFixed(2));
+
+            $('#remainingAmount').text(remaining.toLocaleString('tr-TR', {minimumFractionDigits: 2}));
             $('#paymentAmount').val(remaining.toFixed(2));
 
-            // Borç uyarısı
+            // Borç uyarısı kontrol et
+            updateDebtWarning();
+        }
+
+        // Borç uyarısı güncelle
+        function updateDebtWarning() {
+            const remaining = parseFloat($('#remainingAmount').text().replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
             const paymentAmount = parseFloat($('#paymentAmount').val()) || 0;
-            if (paymentAmount < remaining) {
+
+            if (paymentAmount < remaining && remaining > 0) {
                 $('#debtWarning').show();
                 $('#paymentStatus').val('1'); // Partial
             } else {
@@ -264,21 +299,15 @@
         }
 
         // Event listeners
-        $('.service-price-input, #additionalDiscount, #additionalCharge').on('input', calculateTotals);
-        $('#paymentAmount').on('input', function() {
-            const remaining = parseFloat($('#remainingAmount').text());
-            const paymentAmount = parseFloat($(this).val()) || 0;
-
-            if (paymentAmount < remaining) {
-                $('#debtWarning').show();
-                $('#paymentStatus').val('1');
-            } else {
-                $('#debtWarning').hide();
-                $('#paymentStatus').val('2');
-            }
+        $('.service-price-input, #additionalDiscount, #additionalCharge').on('input change', function() {
+            calculateTotals();
         });
 
-        // Rezervasyonu tamamla
+        $('#paymentAmount').on('input change', function() {
+            updateDebtWarning();
+        });
+
+        // Rezervasyonu tamamla - DÜZELTİLMİŞ
         $('#completeReservationBtn').click(function() {
             const form = $('#completeReservationForm');
             if (!form[0].checkValidity()) {
@@ -287,12 +316,15 @@
             }
 
             const paymentAmount = parseFloat($('#paymentAmount').val()) || 0;
-            if (paymentAmount <= 0) {
-                abp.notify.error('Ödeme tutarı 0\'dan büyük olmalıdır!');
+            const paymentMethod = $('#paymentMethod').val();
+
+            if (paymentAmount > 0 && !paymentMethod) {
+                abp.notify.error('Ödeme tutarı girildiğinde ödeme yöntemi seçilmelidir!');
+                $('#paymentMethod').focus();
                 return;
             }
 
-            // Hizmet fiyat değişikliklerini topla
+            // Değişen hizmet fiyatlarını topla
             const serviceChanges = [];
             $('.service-price-input').each(function() {
                 const detailId = $(this).data('detail-id');
@@ -309,9 +341,11 @@
                 additionalDiscount: parseFloat($('#additionalDiscount').val()) || 0,
                 additionalCharge: parseFloat($('#additionalCharge').val()) || 0,
                 paymentAmount: paymentAmount,
-                paymentMethod: parseInt($('#paymentMethod').val()),
-                paymentNote: $('#paymentNote').val()
+                paymentMethod: paymentMethod ? parseInt(paymentMethod) : null,
+                paymentNote: $('#paymentNote').val() || null
             };
+
+            console.log('Gönderilen data:', data); // Debug için
 
             abp.ui.setBusy('.modal-content');
 
@@ -322,16 +356,29 @@
                 data: JSON.stringify(data),
                 success: function(result) {
                     abp.notify.success('Rezervasyon başarıyla tamamlandı!');
-                    $('#completeReservationModal').modal('hide');
-                    // Rezervasyon listesini yenile
+
+                    // Modal'ı kapat
+                    if (typeof completeReservationModal !== 'undefined') {
+                        completeReservationModal.close();
+                    } else {
+                        $('.modal').modal('hide');
+                    }
+
+                    // Sayfayı yenile
                     if (typeof calendar !== 'undefined') {
                         calendar.refetchEvents();
                     }
                     if (typeof loadDailySummary === 'function') {
                         loadDailySummary();
                     }
+
+                    // Detail modal açıksa onu da yenile
+                    if (typeof reservationDetailModal !== 'undefined') {
+                        reservationDetailModal.close();
+                    }
                 },
                 error: function(xhr) {
+                    console.error('Hata detayı:', xhr); // Debug için
                     const error = xhr.responseJSON?.error?.message || 'Bir hata oluştu!';
                     abp.notify.error(error);
                 },
@@ -341,8 +388,7 @@
             });
         });
 
-        // İlk hesaplama
-        calculateTotals();
+        // Sayfa yüklendiğinde başlat
+        initializeValues();
     });
-
 </script>

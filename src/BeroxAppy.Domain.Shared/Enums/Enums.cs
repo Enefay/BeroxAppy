@@ -40,9 +40,9 @@ namespace BeroxAppy.Enums
 
     public enum PaymentStatus
     {
-        Pending = 0,
-        Partial = 1,
-        Paid = 2,
-        Refunded = 3
+        Pending = 0, //beklemede
+        Partial = 1, //kısmi
+        Paid = 2, //odendi
+        Refunded = 3 //iade
     }
 }

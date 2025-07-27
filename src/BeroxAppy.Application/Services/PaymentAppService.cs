@@ -38,8 +38,59 @@ namespace BeroxAppy.Services
             _reservationAppService = reservationAppService;
         }
 
+        // Günlük kasa oluştur veya getir
+        public async Task<CashRegister> GetOrCreateTodaysCashRegisterAsync()
+        {
+            var today = DateTime.Now.Date;
+            var cashRegister = await _cashRegisterRepository.FindAsync(x => x.Date == today);
+
+            if (cashRegister == null)
+            {
+                // Dünkü kasayı bul
+                var yesterday = today.AddDays(-1);
+                var yesterdayCash = await _cashRegisterRepository
+                    .FindAsync(x => x.Date == yesterday && x.IsClosed);
+
+                cashRegister = new CashRegister
+                {
+                    Date = today,
+                    OpeningBalance = yesterdayCash?.ClosingBalance ?? 0,
+                    ClosingBalance = 0,
+                    TotalCashIn = 0,
+                    TotalCashOut = 0,
+                    IsClosed = false,
+                    Note = $"Otomatik oluşturuldu - {today:dd.MM.yyyy}" 
+                };
+
+                await _cashRegisterRepository.InsertAsync(cashRegister);
+            }
+
+            return cashRegister;
+        }
+
         public async Task<PaymentDto> CreateAsync(CreatePaymentDto input)
         {
+
+            // Nakit ödeme ise kasaya ekle
+            Guid? cashRegisterId = null;
+            if (input.PaymentMethod == PaymentMethod.Cash)
+            {
+                var cashRegister = await GetOrCreateTodaysCashRegisterAsync();
+                cashRegisterId = cashRegister.Id;
+
+                // Kasa bakiyesini güncelle
+                if (input.IsRefund)
+                {
+                    cashRegister.TotalCashOut += input.Amount;
+                }
+                else
+                {
+                    cashRegister.TotalCashIn += input.Amount;
+                }
+
+                await _cashRegisterRepository.UpdateAsync(cashRegister);
+            }
+
             var payment = new Payment
             {
                 CustomerId = input.CustomerId,
@@ -49,10 +100,12 @@ namespace BeroxAppy.Services
                 PaymentDate = input.PaymentDate,
                 Description = input.Description,
                 IsRefund = input.IsRefund,
-                CashRegisterId = input.CashRegisterId
+                CashRegisterId = cashRegisterId // Burada set ediyoruz
+
             };
 
             await _paymentRepository.InsertAsync(payment);
+
 
             // Rezervasyon ödemesi ise ödeme durumunu güncelle
             if (input.ReservationId.HasValue)
@@ -64,6 +117,61 @@ namespace BeroxAppy.Services
             await UpdateCustomerDebtAsync(input.CustomerId, input.Amount, !input.IsRefund);
 
             return await MapToPaymentDtoAsync(payment);
+        }
+
+        // Kasa kapatma
+        public async Task<CashRegisterDto> CloseCashRegisterAsync(Guid cashRegisterId, decimal actualClosingBalance, string note = null)
+        {
+            var cashRegister = await _cashRegisterRepository.GetAsync(cashRegisterId);
+
+            if (cashRegister.IsClosed)
+            {
+                throw new UserFriendlyException("Bu kasa zaten kapatılmış!");
+            }
+
+            // Teorik bakiye hesapla
+            var theoreticalBalance = cashRegister.OpeningBalance + cashRegister.TotalCashIn - cashRegister.TotalCashOut;
+
+            cashRegister.ClosingBalance = actualClosingBalance;
+            cashRegister.IsClosed = true;
+            cashRegister.Note = note;
+
+            await _cashRegisterRepository.UpdateAsync(cashRegister);
+
+            var dto = ObjectMapper.Map<CashRegister, CashRegisterDto>(cashRegister);
+            dto.TheoreticalBalance = theoreticalBalance;
+            dto.Difference = actualClosingBalance - theoreticalBalance;
+
+            return dto;
+        }
+
+        // Günlük kasa raporu
+        public async Task<DailyCashReportDto> GetDailyCashReportAsync(DateTime date)
+        {
+            var cashRegister = await _cashRegisterRepository.FindAsync(x => x.Date == date.Date);
+
+            if (cashRegister == null)
+            {
+                return new DailyCashReportDto { Date = date, HasData = false };
+            }
+
+            var payments = await _paymentRepository.GetListAsync(x =>
+                x.CashRegisterId == cashRegister.Id);
+
+            var report = new DailyCashReportDto
+            {
+                Date = date,
+                HasData = true,
+                OpeningBalance = cashRegister.OpeningBalance,
+                TotalCashIn = cashRegister.TotalCashIn,
+                TotalCashOut = cashRegister.TotalCashOut,
+                TheoreticalClosing = cashRegister.OpeningBalance + cashRegister.TotalCashIn - cashRegister.TotalCashOut,
+                ActualClosing = cashRegister.ClosingBalance,
+                IsClosed = cashRegister.IsClosed,
+                Payments = payments.Select(p => ObjectMapper.Map<Payment, PaymentDto>(p)).ToList()
+            };
+
+            return report;
         }
 
         public async Task<PaymentDto> CreateReservationPaymentAsync(CreateReservationPaymentDto input)
@@ -79,6 +187,19 @@ namespace BeroxAppy.Services
                 throw new UserFriendlyException($"Ödeme tutarı kalan borçtan ({remainingAmount:C}) fazla olamaz.");
             }
 
+            Guid? cashRegisterId = input.CashRegisterId; 
+
+            if (input.PaymentMethod == PaymentMethod.Cash)
+            {
+                // Günlük kasa kaydını bul veya oluştur
+                var todaysCashRegister = await GetOrCreateTodaysCashRegisterAsync();
+                cashRegisterId = todaysCashRegister.Id;
+
+                // Kasa bakiyesini güncelle (ödeme = cash in)
+                todaysCashRegister.TotalCashIn += input.Amount;
+                await _cashRegisterRepository.UpdateAsync(todaysCashRegister);
+            }
+
             var payment = new Payment
             {
                 CustomerId = reservation.CustomerId,
@@ -88,7 +209,7 @@ namespace BeroxAppy.Services
                 PaymentDate = DateTime.Now,
                 Description = input.Description ?? $"Rezervasyon ödemesi - {reservation.ReservationDate:dd.MM.yyyy}",
                 IsRefund = false,
-                CashRegisterId = input.CashRegisterId
+                CashRegisterId = cashRegisterId
             };
 
             await _paymentRepository.InsertAsync(payment);
@@ -98,7 +219,7 @@ namespace BeroxAppy.Services
 
             // Eğer tam ödeme yapıldıysa rezervasyonu tamamla
             var newPaidAmount = await GetReservationPaidAmountAsync(input.ReservationId);
-            if (newPaidAmount >= reservation.FinalPrice)
+            if ((newPaidAmount + payment.Amount) >= reservation.FinalPrice)
             {
                 await _reservationAppService.Value.UpdatePaymentStatusAsync(input.ReservationId, PaymentStatus.Paid);
             }
@@ -245,6 +366,9 @@ namespace BeroxAppy.Services
             // Müşteri borcunu güncelle (tersi işlem)
             await UpdateCustomerDebtAsync(payment.CustomerId, payment.Amount, payment.IsRefund);
         }
+
+
+
 
         private async Task<PaymentDto> MapToPaymentDtoAsync(Payment payment)
         {

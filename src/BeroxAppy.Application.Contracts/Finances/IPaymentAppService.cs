@@ -19,5 +19,12 @@ namespace BeroxAppy.Finances
         Task<decimal> GetReservationPaidAmountAsync(Guid reservationId);
         Task<decimal> GetReservationRemainingAmountAsync(Guid reservationId);
         Task DeleteAsync(Guid id);
+
+        // Günlük kasa raporu
+        Task<DailyCashReportDto> GetDailyCashReportAsync(DateTime date);
+
+        // Kasa kapatma
+        Task<CashRegisterDto> CloseCashRegisterAsync(Guid cashRegisterId, decimal actualClosingBalance, string note = null);
+
     }
 }

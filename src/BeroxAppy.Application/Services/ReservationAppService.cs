@@ -11,6 +11,7 @@ using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
 
 namespace BeroxAppy.Reservations
 {
@@ -1066,45 +1067,65 @@ namespace BeroxAppy.Reservations
 
         public async Task<ReservationDto> CompleteReservationAsync(CompleteReservationDto input)
         {
-            var reservation = await _reservationRepository.GetAsync(input.ReservationId);
+            using var uow = UnitOfWorkManager.Begin();
 
-
-            // 2. Ek indirim/ücret güncelle
-            var currentDiscount = reservation.DiscountAmount ?? 0;
-            var currentExtra = reservation.ExtraAmount ?? 0;
-
-            if (input.AdditionalDiscount != currentDiscount)
+            try
             {
-                reservation.DiscountAmount = input.AdditionalDiscount;
-            }
+                var reservation = await _reservationRepository.GetAsync(input.ReservationId);
 
-            if (input.AdditionalCharge != currentExtra)
-            {
-                reservation.ExtraAmount = input.AdditionalCharge;
-            }
-
-            // 3. Fiyatları yeniden hesapla
-            await RecalculatePricesAsync(input.ReservationId);
-
-            // 4. Rezervasyon durumunu güncelle
-            reservation.Status = ReservationStatus.Arrived;
-            await _reservationRepository.UpdateAsync(reservation);
-
-            // 5. Ödeme kaydet
-            if (input.PaymentAmount > 0)
-            {
-                var paymentDto = new CreateReservationPaymentDto
+                // 1. Hizmet fiyat değişikliklerini uygula
+                if (input.ServiceChanges?.Any() == true)
                 {
-                    ReservationId = input.ReservationId,
-                    Amount = input.PaymentAmount,
-                    PaymentMethod = input.PaymentMethod,
-                    Description = input.PaymentNote ?? $"Rezervasyon tamamlama ödemesi - {DateTime.Now:dd.MM.yyyy HH:mm}"
-                };
+                    foreach (var change in input.ServiceChanges)
+                    {
+                        var detail = await _reservationDetailRepository.GetAsync(change.ReservationDetailId);
 
-                await _paymentAppService.CreateReservationPaymentAsync(paymentDto);
+                        if (Math.Abs(detail.ServicePrice - change.NewPrice) > 0.01m) // Fiyat değişmişse
+                        {
+                            detail.ServicePrice = change.NewPrice;
+
+                            // Komisyon yeniden hesapla
+                            detail.CommissionAmount = detail.ServicePrice * detail.CommissionRate / 100;
+
+                            await _reservationDetailRepository.UpdateAsync(detail);
+                        }
+                    }
+                }
+
+                // 2. İndirim ve ek ücret güncelle
+                reservation.DiscountAmount = input.AdditionalDiscount > 0 ? input.AdditionalDiscount : null;
+                reservation.ExtraAmount = input.AdditionalCharge > 0 ? input.AdditionalCharge : null;
+
+                // 3. Fiyatları yeniden hesapla
+                await RecalculatePricesAsync(input.ReservationId);
+
+                // 4. Rezervasyon durumunu güncelle
+                reservation.Status = ReservationStatus.Arrived;
+                await _reservationRepository.UpdateAsync(reservation);
+
+                // 5. Ödeme kaydet (eğer tutar > 0 ise)
+                if (input.PaymentAmount > 0)
+                {
+                    var paymentDto = new CreateReservationPaymentDto
+                    {
+                        ReservationId = input.ReservationId,
+                        Amount = input.PaymentAmount,
+                        PaymentMethod = input.PaymentMethod,
+                        Description = input.PaymentNote ?? $"Rezervasyon tamamlama ödemesi - {DateTime.Now:dd.MM.yyyy HH:mm}"
+                    };
+
+                    await _paymentAppService.CreateReservationPaymentAsync(paymentDto);
+                }
+
+                await uow.CompleteAsync();
+
+                return await GetAsync(input.ReservationId);
             }
-
-            return await GetAsync(input.ReservationId);
+            catch (Exception)
+            {
+                await uow.RollbackAsync();
+                throw;
+            }
         }
 
     }

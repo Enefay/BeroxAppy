@@ -186,30 +186,16 @@
                     <i class="fas fa-credit-card"></i> Ödemeli Tamamla
                 </button>
             }
-            else
-            {
-                <!-- Sadece düzenleme -->
-                <button type="button"
-                        class="btn btn-primary me-2"
-                        onclick="reservations.openEditModal('@Model.Reservation.Id')">
-                    <i class="fas fa-edit"></i> Düzenle
-                </button>
-            }
-
-            <!-- Ek ödeme al -->
-         @*    <button type="button"
-                    class="btn btn-outline-success me-2"
-                    onclick="reservations.addPayment('@Model.Reservation.Id')">
-                <i class="fas fa-plus"></i> Ek Ödeme
-            </button> *@
         }
-
-        <!-- Her durumda düzenleme -->
-        <button type="button"
-                class="btn btn-primary me-2"
-                onclick="reservations.openEditModal('@Model.Reservation.Id')">
-            <i class="fas fa-edit"></i> Rezervasyonu Düzenle
-        </button>
+        else
+        {
+            <button type="button"
+                    class="btn btn-primary me-2"
+                    onclick="reservations.openEditModal('@Model.Reservation.Id')">
+                <i class="fas fa-edit"></i> Rezervasyonu Düzenle
+            </button>
+        }
+   
 
         <!-- Kapat -->
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
