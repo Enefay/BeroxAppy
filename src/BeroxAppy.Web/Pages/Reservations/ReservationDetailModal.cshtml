@@ -53,7 +53,20 @@
                 </div>
             }
 
-            <h6 class="mt-3">Hizmetler</h6>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <h6 class="mb-0">Hizmetler</h6>
+
+                @if (Model.Reservation?.Status == ReservationStatus.Pending)
+                {
+                    <button type="button"
+                            class="btn btn-outline btn-sm"
+                            onclick="reservations.openEditModal('@Model.Reservation.Id')">
+                        <i class="fas fa-edit"></i> Rezervasyonu Düzenle
+                    </button>
+                }
+            </div>
+
+
             <table class="table table-sm table-bordered">
                 <thead class="table-light">
                     <tr>
@@ -160,16 +173,10 @@
                 <i class="fas fa-check-circle"></i> Müşteri Geldi & Tamamla
             </button>
 
-            <!-- Sadece Geldi İşaretle -->
-            <button type="button"
-                    class="btn btn-info me-2"
-                    onclick="reservations.markAsArrived('@Model.Reservation.Id')">
-                <i class="fas fa-user-check"></i> Sadece Geldi İşaretle
-            </button>
 
             <!-- Gelmedi İşaretle -->
             <button type="button"
-                    class="btn btn-warning me-2"
+                    class="btn btn-danger me-2"
                     onclick="reservations.markAsNoShow('@Model.Reservation.Id')">
                 <i class="fas fa-user-times"></i> Gelmedi
             </button>
@@ -183,23 +190,13 @@
                 <button type="button"
                         class="btn btn-success me-2"
                         onclick="reservations.completeReservation('@Model.Reservation.Id')">
-                    <i class="fas fa-credit-card"></i> Ödemeli Tamamla
+                    <i class="fas fa-credit-card"></i> Ödemeyi Tamamla
                 </button>
             }
         }
-        else
-        {
-            <button type="button"
-                    class="btn btn-primary me-2"
-                    onclick="reservations.openEditModal('@Model.Reservation.Id')">
-                <i class="fas fa-edit"></i> Rezervasyonu Düzenle
-            </button>
-        }
-   
-
         <!-- Kapat -->
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        @*        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times"></i> Kapat
-        </button>
+        </button> *@
     </abp-modal-footer>
 </abp-modal>

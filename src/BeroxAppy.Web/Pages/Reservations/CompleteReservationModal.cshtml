@@ -355,27 +355,10 @@
                 contentType: 'application/json',
                 data: JSON.stringify(data),
                 success: function(result) {
-                    abp.notify.success('Rezervasyon başarıyla tamamlandı!');
 
-                    // Modal'ı kapat
-                    if (typeof completeReservationModal !== 'undefined') {
-                        completeReservationModal.close();
-                    } else {
-                        $('.modal').modal('hide');
-                    }
 
-                    // Sayfayı yenile
-                    if (typeof calendar !== 'undefined') {
-                        calendar.refetchEvents();
-                    }
-                    if (typeof loadDailySummary === 'function') {
-                        loadDailySummary();
-                    }
-
-                    // Detail modal açıksa onu da yenile
-                    if (typeof reservationDetailModal !== 'undefined') {
-                        reservationDetailModal.close();
-                    }
+                                            abp.event.trigger('app.reservation.saved', result);
+                   
                 },
                 error: function(xhr) {
                     console.error('Hata detayı:', xhr); // Debug için
