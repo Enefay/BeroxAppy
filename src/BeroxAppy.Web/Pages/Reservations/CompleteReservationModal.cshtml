@@ -93,11 +93,6 @@
                                        value="@(Model.Reservation.DiscountAmount ?? 0)"
                                        min="0" step="0.01" />
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">İndirim Nedeni</label>
-                                <input type="text" id="discountReason" class="form-control"
-                                       placeholder="İndirim sebebi..." />
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -112,11 +107,6 @@
                                 <input type="number" id="additionalCharge" class="form-control"
                                        value="@(Model.Reservation.ExtraAmount ?? 0)"
                                        min="0" step="0.01" />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Ek Ücret Nedeni</label>
-                                <input type="text" id="chargeReason" class="form-control"
-                                       placeholder="Ek ücret sebebi..." />
                             </div>
                         </div>
                     </div>
@@ -317,9 +307,7 @@
                 reservationId: $('#reservationId').val(),
                 serviceChanges: serviceChanges,
                 additionalDiscount: parseFloat($('#additionalDiscount').val()) || 0,
-                discountReason: $('#discountReason').val(),
                 additionalCharge: parseFloat($('#additionalCharge').val()) || 0,
-                chargeReason: $('#chargeReason').val(),
                 paymentAmount: paymentAmount,
                 paymentMethod: parseInt($('#paymentMethod').val()),
                 paymentNote: $('#paymentNote').val()
