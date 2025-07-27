@@ -23,11 +23,31 @@
         });
 
         // Modal açıldığında çalışacak fonksiyon
-        initializeModal();
+        // initializeModal();
 
         function initializeModal() {
-            // İlk hizmet satırını ekle (eğer yoksa)
-            if ($('#servicesContainer .service-row').length === 0) {
+            // Edit mode kontrolü
+           var initialDetails = @Html.Raw(
+                System.Text.Json.JsonSerializer.Serialize(
+                    Model.Reservation.ReservationDetails.Select(d => new
+                    {
+                        Id = d.Id,
+                        ServiceId = d.ServiceId,
+                        ServiceTitle = d.ServiceTitle,
+                        EmployeeId = d.EmployeeId,
+                        EmployeeName = d.EmployeeName,
+                        TimeDisplay = d.TimeDisplay,
+                        StartTime = d.StartTime.ToString(),
+                        ServicePrice = d.ServicePrice,
+                        Note = d.Note
+                    })
+                )
+            );
+
+
+            if (initialDetails && initialDetails.length > 0) {
+                initialDetails.forEach(detail => addServiceRow(detail));
+            } else if ($('#servicesContainer .service-row').length === 0) {
                 addServiceRow();
             }
 
@@ -61,7 +81,7 @@
         function openAddCustomerModal(customerName = '') {
             // Modal'ı aç
             customerCreateModal.open({
-                customerName: customerName // Modal'a parametre gönder
+                customerName: customerName
             });
         }
 
@@ -102,19 +122,15 @@
             });
         }
 
-        // Form gönderimi ve validation kontrolü
         function submitFormWithValidation() {
-            // Loading state
             const saveBtn = $('.abp-modal-footer .btn-primary');
             const originalText = saveBtn.text();
             saveBtn.prop('disabled', true).text('Kaydediliyor...');
 
-            // Önceki hata mesajlarını temizle
             $('.text-danger').text('');
             $('.is-invalid').removeClass('is-invalid');
             $('.validation-summary').remove();
 
-            // Form data'sını topla
             const formData = $('#reservationForm').serialize();
 
             $.ajax({
@@ -130,35 +146,27 @@
                         createEditModal.close();
                         return;
                     } else {
-                        // Validation hataları var - Modal'ı açık tut
                         handleValidationErrors(response);
                     }
                 },
                 error: function(xhr) {
-                    // Server hatası
                     console.error('Server error:', xhr);
                     abp.notify.error('Bir hata oluştu. Lütfen tekrar deneyin.');
                 },
                 complete: function() {
-                    // Loading state'i kaldır
                     saveBtn.prop('disabled', false).text(originalText);
                 }
             });
         }
 
-        // Validation hatalarını işle
         function handleValidationErrors(response) {
             if (response.errors) {
-                // Field level validation errors
                 Object.keys(response.errors).forEach(function(fieldName) {
                     const errors = response.errors[fieldName];
                     if (errors && errors.length > 0) {
-                        // Field'ı bul ve hata mesajını göster
                         const field = $(`[name="${fieldName}"]`);
                         if (field.length > 0) {
                             field.addClass('is-invalid');
-
-                            // Hata mesajını göster
                             const errorSpan = field.closest('.form-group, .col-md-4, .col-md-8, .col-12').find('.text-danger');
                             if (errorSpan.length > 0) {
                                 errorSpan.text(errors[0]);
@@ -168,43 +176,35 @@
                 });
             }
 
-            // Genel hata mesajı
             if (response.message) {
                 const errorHtml = `<div class="validation-summary alert alert-danger">${response.message}</div>`;
                 $('.abp-modal-body').prepend(errorHtml);
             }
 
-            // Modal'ı en üste kaydır
             $('.abp-modal-body').scrollTop(0);
-
             abp.notify.error(response.message || 'Lütfen form hatalarını düzeltin.');
         }
 
-        // Müşteri autocomplete fonksiyonu
         function initializeCustomerAutocomplete() {
             const searchInput = $('#customerSearch');
             const dropdown = $('#customerDropdown');
             const hiddenCustomerId = $('#selectedCustomerId');
 
-            // Input focus olduğunda dropdown'u göster
             searchInput.on('focus', function() {
                 if ($(this).val().length >= 1) {
                     searchCustomers($(this).val());
                 }
             });
 
-            // Input'a yazı yazıldığında arama yap
             searchInput.on('input', function() {
                 const query = $(this).val().trim();
 
-                // Seçili müşteriyi temizle
                 if (selectedCustomer && selectedCustomer.fullName !== query) {
                     selectedCustomer = null;
                     hiddenCustomerId.val('');
                 }
 
                 if (query.length >= 1) {
-                    // Debounce - 300ms bekle
                     clearTimeout(customerSearchTimeout);
                     customerSearchTimeout = setTimeout(() => {
                         searchCustomers(query);
@@ -214,29 +214,24 @@
                 }
             });
 
-            // Input'tan çıkıldığında dropdown'u gizle (kısa gecikme ile)
             searchInput.on('blur', function() {
                 setTimeout(() => {
                     dropdown.hide();
                 }, 200);
             });
 
-            // Dropdown item'lara tıklama
             $(document).off('click', '.customer-dropdown-item').on('click', '.customer-dropdown-item', function(e) {
                 e.preventDefault();
                 const customerId = $(this).data('customer-id');
                 const customerName = $(this).data('customer-name');
 
                 if (customerId === 'new') {
-                    // ABP Modal ile yeni müşteri ekleme modalını aç
                     const searchQuery = $('#customerSearch').val().trim();
-                    console.log("Açılacak modal için query:", searchQuery);
                     openAddCustomerModal(searchQuery);
                     dropdown.hide();
                     return;
                 }
 
-                // Müşteriyi seç
                 selectedCustomer = {
                     id: customerId,
                     fullName: customerName
@@ -248,11 +243,8 @@
             });
         }
 
-        // Müşteri arama AJAX fonksiyonu
         function searchCustomers(query) {
             const dropdown = $('#customerDropdown');
-
-            // Loading göster
             dropdown.html('<div class="dropdown-item disabled">Aranıyor...</div>').show();
 
             $.ajax({
@@ -265,7 +257,6 @@
                 success: function(customers) {
                     dropdown.empty();
 
-                    // Yeni müşteri ekle seçeneği (her zaman en üstte)
                     dropdown.append(`
                         <a href="#" class="dropdown-item customer-dropdown-item text-primary" data-customer-id="new">
                             <i class="fas fa-plus me-2"></i>
@@ -274,10 +265,7 @@
                     `);
 
                     if (customers && customers.length > 0) {
-                        // Ayırıcı ekle
                         dropdown.append('<div class="dropdown-divider"></div>');
-
-                        // Müşteri listesi (maksimum 5 kişi)
                         customers.slice(0, 5).forEach(customer => {
                             dropdown.append(`
                                 <a href="#" class="dropdown-item customer-dropdown-item"
@@ -333,7 +321,7 @@
         }
 
         // Hizmet satırı ekle
-        function addServiceRow() {
+        function addServiceRow(data) {
             const template = document.getElementById('serviceRowTemplate');
             if (!template) {
                 console.error('Service row template not found!');
@@ -349,10 +337,11 @@
 
             // Hidden input'ları ekle
             row.append(`
+                <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].Id" class="detail-id" value="${data?.Id || '00000000-0000-0000-0000-000000000000'}" />
                 <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].ServiceId" class="detail-service-id" />
                 <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].EmployeeId" class="detail-employee-id" />
                 <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].StartTime" class="detail-start-time" />
-                <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].CustomPrice" class="detail-custom-price" />
+                <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].ServicePrice" class="detail-custom-price" />
                 <input type="hidden" name="Reservation.ReservationDetails[${currentIndex}].Note" class="detail-note" />
             `);
 
@@ -360,40 +349,59 @@
             bindServiceRowEvents(row);
 
             $('#servicesContainer').append(row);
+
+            if (data) {
+            // 1) Hizmet ve çalışan
+            row.find('.detail-service-id').val(data.ServiceId);
+            row.find('.service-search').val(data.ServiceTitle);
+            row.find('.detail-employee-id').val(data.EmployeeId);
+            row.find('.employee-search').val(data.EmployeeName);
+
+            // 1) Placeholder olarak eski saati göster
+            const timeSelect = row.find('.time-select');
+            timeSelect.html(`<option value="${data.StartTime}">${data.TimeDisplay}</option>`);
+            row.find('.detail-start-time').val(data.StartTime);
+
+            // 2) Gerçek müsait slotları yükle ve bitince tekrar seç
+            loadAvailableSlotsForRow(row)
+              .done(() => {
+                // alınan option’lardan değeri yeniden atıyoruz
+                timeSelect.val(data.StartTime);
+                row.find('.detail-start-time').val(data.StartTime);
+            });
+
+            // 3) Fiyat ve not
+            row.find('.service-price').val(data.ServicePrice);
+            row.find('.detail-custom-price').val(data.ServicePrice);
+            row.find('.service-note').val(data.Note);
+        }
+
             calculateTotalPrice();
         }
 
-        // Hizmet satırı eventlerini bağla
         function bindServiceRowEvents(row) {
-            // YENİ: Hizmet ve çalışan autocomplete'leri başlat
             initializeServiceAutocomplete(row);
             initializeEmployeeAutocomplete(row);
 
-            // Saat değişikliği - hidden input'ı güncelle
             row.find('.time-select').on('change', function() {
                 const startTime = $(this).val();
                 row.find('.detail-start-time').val(startTime);
             });
 
-            // Fiyat değişikliği - hidden input'ı güncelle ve toplam hesapla
             row.find('.service-price').on('input change', function() {
                 const price = $(this).val();
                 row.find('.detail-custom-price').val(price.toString().replace(',', '.'));
-                // Her fiyat değişikliğinde toplam hesapla
                 calculateTotalPrice();
             });
 
-            // Not değişikliği - hidden input'ı güncelle
             row.find('.service-note').on('input', function() {
                 const note = $(this).val();
                 row.find('.detail-note').val(note);
             });
 
-            // Silme butonu
             row.find('.remove-service-btn').on('click', function () {
                 if ($('#servicesContainer .service-row').length > 1) {
                     row.remove();
-                    // Index'leri yeniden düzenle
                     reindexReservationDetails();
                     calculateTotalPrice();
                 } else {
@@ -402,7 +410,6 @@
             });
         }
 
-        // YENİ: Hizmet autocomplete fonksiyonu
         function initializeServiceAutocomplete(row) {
             const searchInput = row.find('.service-search');
             const dropdown = row.find('.service-dropdown');
@@ -434,7 +441,6 @@
             });
         }
 
-        // YENİ: Çalışan autocomplete fonksiyonu
         function initializeEmployeeAutocomplete(row) {
             const searchInput = row.find('.employee-search');
             const dropdown = row.find('.employee-dropdown');
@@ -480,7 +486,6 @@
             });
         }
 
-        // YENİ: Hizmet arama AJAX fonksiyonu
         function searchServices(query, dropdown, row) {
             dropdown.html('<div class="dropdown-item disabled">Aranıyor...</div>').show();
 
@@ -520,7 +525,6 @@
                 }
             });
 
-            // Dropdown item click event'i
             dropdown.off('click', '.service-dropdown-item').on('click', '.service-dropdown-item', function(e) {
                 e.preventDefault();
 
@@ -528,13 +532,11 @@
                 const serviceTitle = $(this).data('service-title');
                 const servicePrice = $(this).data('service-price');
 
-                // Input'ları güncelle
                 row.find('.service-search').val(serviceTitle);
                 row.find('.detail-service-id').val(serviceId);
                 row.find('.service-price').val(servicePrice.toFixed(2));
                 row.find('.detail-custom-price').val(servicePrice.toString().replace(',', '.'));
 
-                // Çalışan ve saat alanlarını temizle
                 row.find('.employee-search').val('');
                 row.find('.detail-employee-id').val('');
                 row.find('.time-select').html('<option value="">Önce Çalışan Seçin</option>');
@@ -545,7 +547,6 @@
             });
         }
 
-        // YENİ: Çalışan arama AJAX fonksiyonu
         function searchEmployees(serviceId, query, dropdown, row) {
             dropdown.html('<div class="dropdown-item disabled">Aranıyor...</div>').show();
 
@@ -583,110 +584,82 @@
                 }
             });
 
-            // Dropdown item click event'i
             dropdown.off('click', '.employee-dropdown-item').on('click', '.employee-dropdown-item', function(e) {
                 e.preventDefault();
 
                 const employeeId = $(this).data('employee-id');
                 const employeeName = $(this).data('employee-name');
 
-                // Input'ları güncelle
                 row.find('.employee-search').val(employeeName);
                 row.find('.detail-employee-id').val(employeeId);
 
                 dropdown.hide();
-
-                // Saat listesini güncelle
                 loadAvailableSlotsForRow(row);
             });
         }
 
-        // YENİ: Belirli bir satır için müsait saatleri yükle
         function loadAvailableSlotsForRow(row) {
-            const employeeId = row.find('.detail-employee-id').val();
-            const serviceId = row.find('.detail-service-id').val();
-            const date = $('#reservationDate').val();
-            const timeSelect = row.find('.time-select');
+          const employeeId = row.find('.detail-employee-id').val();
+          const serviceId  = row.find('.detail-service-id').val();
+          const date       = $('#reservationDate').val();
+          const timeSelect = row.find('.time-select');
 
-            if (!employeeId || !serviceId || !date) {
-                return;
+          if (!employeeId || !serviceId || !date) {
+            return $.Deferred().resolve().promise();
+          }
+
+          timeSelect.html('<option>Yükleniyor...</option>');
+
+          return $.ajax({
+            url: '/Reservations/CreateEditModal?handler=AvailableSlots',
+            type: 'GET',
+            data: { employeeId, serviceId, date },
+            headers: {
+              'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
             }
-
-            timeSelect.html('<option value="">Müsait saatler yükleniyor...</option>');
-
-            $.ajax({
-                url: '/Reservations/CreateEditModal?handler=AvailableSlots',
-                type: 'GET',
-                data: {
-                    employeeId: employeeId,
-                    serviceId: serviceId,
-                    date: date
-                },
-                headers: {
-                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                },
-                success: function (response) {
-                    timeSelect.html('<option value="">Saat Seçin</option>');
-                    const slots = response.availableSlots && response.availableSlots.availableSlots;
-
-                    if (slots && slots.length > 0) {
-                        slots.forEach(slot => {
-                            if (slot.isAvailable) {
-                                timeSelect.append(`<option value="${slot.startTime}">${slot.display}</option>`);
-                            }
-                        });
-                    } else {
-                        timeSelect.html('<option value="">Müsait saat yok</option>');
-                    }
-                },
-                error: function() {
-                    timeSelect.html('<option value="">Hata oluştu</option>');
-                }
-            });
+          }).done(response => {
+            timeSelect.html('<option value="">Saat Seçin</option>');
+            const slots = response.availableSlots.availableSlots;
+            if (slots && slots.length) {
+              slots.forEach(slot => {
+                timeSelect.append(
+                  `<option value="${slot.startTime}">${slot.display}</option>`
+                );
+              });
+            } else {
+              timeSelect.html('<option value="">Müsait saat yok</option>');
+            }
+          });
         }
 
-        // Index'leri yeniden düzenle
+
         function reindexReservationDetails() {
             $('#servicesContainer .service-row').each(function(index) {
                 const row = $(this);
                 row.attr('data-index', index);
 
-                // Hidden input'ların name'lerini güncelle
+                row.find('.detail-id').attr('name', `Reservation.ReservationDetails[${index}].Id`);
                 row.find('.detail-service-id').attr('name', `Reservation.ReservationDetails[${index}].ServiceId`);
                 row.find('.detail-employee-id').attr('name', `Reservation.ReservationDetails[${index}].EmployeeId`);
                 row.find('.detail-start-time').attr('name', `Reservation.ReservationDetails[${index}].StartTime`);
-                row.find('.detail-custom-price').attr('name', `Reservation.ReservationDetails[${index}].CustomPrice`);
+                row.find('.detail-custom-price').attr('name', `Reservation.ReservationDetails[${index}].ServicePrice`);
                 row.find('.detail-note').attr('name', `Reservation.ReservationDetails[${index}].Note`);
             });
         }
 
-        // Toplam fiyatı hesapla - Dinamik hesaplama
         function calculateTotalPrice() {
             let total = 0;
 
-            // Tüm hizmet fiyatlarını topla
             $('.service-price').each(function () {
                 const price = parseFloat($(this).val()) || 0;
                 total += price;
             });
 
-            // İndirim ve ekstra ücretleri al
             const discount = parseFloat($('#discountAmount').val()) || 0;
             const extra = parseFloat($('#extraAmount').val()) || 0;
 
-            // Toplam hesapla (negatif olamaz)
             total = Math.max(0, total - discount + extra);
-
-            // Toplam tutarı güncelle - Türk Lirası formatında
             $('#totalAmount').val('₺' + total.toFixed(2));
-
-            // Debug için konsola yazdır
-            console.log('Fiyat hesaplaması:', {
-                servicesTotali: $('.service-price').toArray().reduce((sum, el) => sum + (parseFloat($(el).val()) || 0), 0),
-                indirim: discount,
-                ekstra: extra,
-                toplamTutar: total
-            });
         }
 
         function updateAvailableSlots() {
@@ -699,7 +672,6 @@
             });
         }
 
-        // Modal kapatıldığında temizlik yap
         $('#createEditModal').on('hidden.bs.modal', function () {
             $('#servicesContainer').empty();
             serviceRowIndex = 0;
@@ -709,7 +681,6 @@
             $('#customerDropdown').hide();
         });
 
-        // Modal açıldığında yeniden initialize et
         $('#createEditModal').on('shown.bs.modal', function () {
             initializeModal();
             loadExistingCustomerInfo();
@@ -738,11 +709,9 @@
                                asp-for="Reservation.CustomerId"
                                id="selectedCustomerId" />
 
-                        <!-- Dropdown sonuçlar -->
                         <div id="customerDropdown"
                              class="dropdown-menu w-100"
                              style="display: none; max-height: 300px; overflow-y: auto;">
-                            <!-- Dinamik olarak doldurulacak -->
                         </div>
                     </div>
                     <span asp-validation-for="Reservation.CustomerId" class="text-danger"></span>
@@ -812,7 +781,7 @@
 <template id="serviceRowTemplate">
     <div class="service-row mb-3 p-3 border rounded">
         <div class="row">
-            <!-- Hizmet Seçimi - Autocomplete olarak değiştirildi -->
+            <!-- Hizmet Seçimi -->
             <div class="col-md-4">
                 <label class="form-label">Hizmet</label>
                 <div class="position-relative">
@@ -828,7 +797,7 @@
                 </div>
             </div>
 
-            <!-- Çalışan Seçimi - Autocomplete olarak değiştirildi -->
+            <!-- Çalışan Seçimi -->
             <div class="col-md-3">
                 <label class="form-label">Çalışan</label>
                 <div class="position-relative">
@@ -836,10 +805,8 @@
                            class="form-control employee-search"
                            placeholder="Çalışan arayın..."
                            autocomplete="off" />
-                    <!-- Dropdown sonuçlar -->
                     <div class="employee-dropdown dropdown-menu w-100"
                          style="display: none; max-height: 200px; overflow-y: auto;">
-                        <!-- Dinamik olarak doldurulacak -->
                     </div>
                 </div>
             </div>

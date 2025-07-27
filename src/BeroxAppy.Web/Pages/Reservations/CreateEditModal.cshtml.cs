@@ -74,7 +74,7 @@ namespace BeroxAppy.Web.Pages.Reservations
             }
 
             // Rezervasyon tarihi geçmiş tarih kontrolü
-            if (Reservation.ReservationDate.Date < DateTime.Now.Date)
+            if (Reservation.ReservationDate.Date < DateTime.Now.Date && Reservation.Id == Guid.Empty)
             {
                 ModelState.AddModelError("Reservation.ReservationDate", "Rezervasyon tarihi bugünden önce olamaz.");
             }
@@ -114,8 +114,8 @@ namespace BeroxAppy.Web.Pages.Reservations
                         ModelState.AddModelError($"Reservation.ReservationDetails[{i}].StartTime", $"{i + 1}. hizmet için saat seçimi zorunludur.");
                     }
 
-                    // Fiyat kontrolü - eğer CustomPrice null ise service price'ı kullan
-                    if (!detail.CustomPrice.HasValue || detail.CustomPrice <= 0)
+                    // Fiyat kontrolü - eğer ServicePrice null ise service price'ı kullan
+                    if (!detail.ServicePrice.HasValue || detail.ServicePrice <= 0)
                     {
                         if (detail.ServiceId != Guid.Empty)
                         {
@@ -124,22 +124,22 @@ namespace BeroxAppy.Web.Pages.Reservations
                                 var service = await _serviceAppService.GetAsync(detail.ServiceId);
                                 if (service.Price <= 0)
                                 {
-                                    ModelState.AddModelError($"Reservation.ReservationDetails[{i}].CustomPrice", $"{i + 1}. hizmet için geçerli bir fiyat giriniz.");
+                                    ModelState.AddModelError($"Reservation.ReservationDetails[{i}].ServicePrice", $"{i + 1}. hizmet için geçerli bir fiyat giriniz.");
                                 }
                                 else
                                 {
                                     // Service price'ı custom price olarak ata
-                                    detail.CustomPrice = service.Price;
+                                    detail.ServicePrice = service.Price;
                                 }
                             }
                             catch
                             {
-                                ModelState.AddModelError($"Reservation.ReservationDetails[{i}].CustomPrice", $"{i + 1}. hizmet için fiyat bilgisi alınamadı.");
+                                ModelState.AddModelError($"Reservation.ReservationDetails[{i}].ServicePrice", $"{i + 1}. hizmet için fiyat bilgisi alınamadı.");
                             }
                         }
                         else
                         {
-                            ModelState.AddModelError($"Reservation.ReservationDetails[{i}].CustomPrice", $"{i + 1}. hizmet için geçerli bir fiyat giriniz.");
+                            ModelState.AddModelError($"Reservation.ReservationDetails[{i}].ServicePrice", $"{i + 1}. hizmet için geçerli bir fiyat giriniz.");
                         }
                     }
 
@@ -234,6 +234,44 @@ namespace BeroxAppy.Web.Pages.Reservations
             return new JsonResult(employees.Items);
         }
 
+        // Hizmet bilgisini getir (edit modunda kullanılacak)
+        public async Task<IActionResult> OnGetServiceInfoAsync(Guid id)
+        {
+            try
+            {
+                var service = await _serviceAppService.GetAsync(id);
+                return new JsonResult(new
+                {
+                    id = service.Id,
+                    title = service.Title,
+                    price = service.Price,
+                    duration = service.DurationDisplay
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Hizmet bilgisi alınırken hata oluştu: {ServiceId}", id);
+                return new JsonResult(null);
+            }
+        }
+        // Çalışan bilgisini getir (edit modunda kullanılacak)
+        public async Task<IActionResult> OnGetEmployeeInfoAsync(Guid id)
+        {
+            try
+            {
+                var employee = await _employeeAppService.GetAsync(id);
+                return new JsonResult(new
+                {
+                    id = employee.Id,
+                    fullName = employee.FullName
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Çalışan bilgisi alınırken hata oluştu: {EmployeeId}", id);
+                return new JsonResult(null);
+            }
+        }
         // Servis fiyatını getir
         public async Task<IActionResult> OnGetServicePriceAsync(Guid serviceId)
         {
@@ -458,20 +496,27 @@ namespace BeroxAppy.Web.Pages.Reservations
 
         public class ReservationDetailViewModel
         {
+            public Guid Id { get; set; }
+
             [Required(ErrorMessage = "Hizmet seçimi zorunludur.")]
             public Guid ServiceId { get; set; }
 
             [Required(ErrorMessage = "Çalışan seçimi zorunludur.")]
             public Guid EmployeeId { get; set; }
 
+            public string? EmployeeName { get; set; }
+            public string? ServiceTitle { get; set; }
+            public string? TimeDisplay { get; set; } 
+
             [Required(ErrorMessage = "Saat seçimi zorunludur.")]
             public TimeSpan StartTime { get; set; }
 
             [Range(0.01, double.MaxValue, ErrorMessage = "Geçerli bir fiyat giriniz.")]
-            public decimal? CustomPrice { get; set; }
+            public decimal? ServicePrice { get; set; }
 
             [StringLength(200, ErrorMessage = "Hizmet notu en fazla 200 karakter olabilir.")]
             public string? Note { get; set; }
+
         }
     }
 }

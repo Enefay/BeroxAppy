@@ -10,6 +10,8 @@ namespace BeroxAppy.Reservations
 {
     public class UpdateReservationDto
     {
+        public Guid Id { get; set; } 
+
         [Required]
         public Guid CustomerId { get; set; }
 
@@ -21,7 +23,8 @@ namespace BeroxAppy.Reservations
 
         public decimal? DiscountAmount { get; set; }
         public decimal? ExtraAmount { get; set; }
-
+        public bool IsWalkIn { get; set; } = false;
+        public List<UpdateReservationDetaillDto> ReservationDetails { get; set; } = new();
         public ReservationStatus Status { get; set; }
     }
 }

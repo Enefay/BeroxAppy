@@ -282,10 +282,15 @@ namespace BeroxAppy.Reservations
         /// <summary>
         /// Rezervasyon güncelle
         /// </summary>
+        /// <summary>
+        /// Rezervasyon güncelle
+        /// </summary>
         public async Task<ReservationDto> UpdateAsync(Guid id, UpdateReservationDto input)
         {
+            // Reservation entity'sini al (DTO değil)
             var reservation = await _reservationRepository.GetAsync(id);
 
+            // Ana rezervasyon bilgilerini güncelle
             reservation.CustomerId = input.CustomerId;
             reservation.Note = input.Note;
             reservation.ReservationDate = input.ReservationDate.Date;
@@ -293,11 +298,58 @@ namespace BeroxAppy.Reservations
             reservation.ExtraAmount = input.ExtraAmount;
             reservation.Status = input.Status;
 
+            // Repository pattern kullanarak detayları güncelle
+            var existingDetails = await _reservationDetailRepository.GetListAsync(x => x.ReservationId == id);
+            var existingDetailIds = existingDetails.Select(d => d.Id).ToList();
+            var inputDetailIds = input.ReservationDetails.Where(d => d.Id != Guid.Empty).Select(d => d.Id).ToList();
+
+            // Silinecek detayları bul ve kaldır
+            var detailsToDelete = existingDetails
+                .Where(d => !inputDetailIds.Contains(d.Id))
+                .ToList();
+
+            foreach (var detailToDelete in detailsToDelete)
+            {
+                await _reservationDetailRepository.DeleteAsync(detailToDelete.Id);
+            }
+
+            // Detayları güncelle veya ekle
+            foreach (var detailDto in input.ReservationDetails)
+            {
+                if (detailDto.Id != Guid.Empty && existingDetailIds.Contains(detailDto.Id))
+                {
+                    // Mevcut detayı güncelle
+                    var existingDetail = await _reservationDetailRepository.GetAsync(detailDto.Id);
+                    existingDetail.ServiceId = detailDto.ServiceId;
+                    existingDetail.EmployeeId = detailDto.EmployeeId;
+                    existingDetail.StartTime = detailDto.StartTime;
+                    existingDetail.ServicePrice = detailDto.ServicePrice;
+                    existingDetail.Note = detailDto.Note;
+
+                    await _reservationDetailRepository.UpdateAsync(existingDetail);
+                }
+                else
+                {
+                    // Yeni detay ekle
+                    var newDetail = await _reservationDetailRepository.InsertAsync(new ReservationDetail
+                    {
+                        ReservationId = id, // reservation.Id yerine id kullan
+                        ServiceId = detailDto.ServiceId,
+                        EmployeeId = detailDto.EmployeeId,
+                        StartTime = detailDto.StartTime,
+                        ServicePrice = detailDto.ServicePrice,
+                        Note = detailDto.Note
+                    });
+                }
+            }
+
             // Fiyatları yeniden hesapla
             await RecalculatePricesAsync(id);
 
+            // Entity'yi güncelle (DTO değil)
             await _reservationRepository.UpdateAsync(reservation);
 
+            // Güncellenmiş DTO'yu döndür
             return await GetAsync(id);
         }
 
