@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections;
+﻿using BeroxAppy.Enums;
+using BeroxAppy.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BeroxAppy.Employees;
-using BeroxAppy.Enums;
-using BeroxAppy.Services;
-using Microsoft.AspNetCore.Identity;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
-using Volo.Abp.ObjectMapping;
-using IdentityUser = Volo.Abp.Identity.IdentityUser;
 
 namespace BeroxAppy.Employees
 {
@@ -574,6 +569,27 @@ namespace BeroxAppy.Employees
 
             await base.DeleteAsync(id);
         }
+
+
+        /// <summary>
+        /// Çalışan Arama
+        /// </summary>
+        public async Task<List<EmployeeDto>> SearchEmployeesAsync(string? query, int maxResultCount = 5)
+        {
+            var queryable = await Repository.GetQueryableAsync();
+
+            if (!string.IsNullOrWhiteSpace(query))
+                queryable = queryable.Where(e => e.FullName.Contains(query));
+
+            var list = await AsyncExecuter.ToListAsync(
+                queryable.Where(e => e.IsActive)
+                    .OrderBy(e => e.FullName)
+                    .Take(maxResultCount)
+            );
+
+            return ObjectMapper.Map<List<Employee>, List<EmployeeDto>>(list);
+        }
+
 
         /// <summary>
         /// EmployeeDto'yu zenginleştir

@@ -1,17 +1,17 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using BeroxAppy.Reservations;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using System.Collections.Generic;
-using System.Linq;
-using BeroxAppy.Customers;
-using BeroxAppy.Services;
+﻿using BeroxAppy.Customers;
 using BeroxAppy.Employees;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.Extensions.Logging;
-using Volo.Abp;
+using BeroxAppy.Reservations;
+using BeroxAppy.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Threading.Tasks;
+using Volo.Abp;
 
 namespace BeroxAppy.Web.Pages.Reservations
 {
@@ -82,6 +82,7 @@ namespace BeroxAppy.Web.Pages.Reservations
             if (Reservation.ReservationDetails == null || !Reservation.ReservationDetails.Any())
             {
                 ModelState.AddModelError("Reservation.ReservationDetails", "En az bir hizmet eklemelisiniz.");
+
             }
             else
             {
@@ -89,6 +90,14 @@ namespace BeroxAppy.Web.Pages.Reservations
                 for (int i = 0; i < Reservation.ReservationDetails.Count; i++)
                 {
                     var detail = Reservation.ReservationDetails[i];
+
+
+                    if (detail.ServiceId == Guid.Empty && detail.EmployeeId == Guid.Empty && detail.StartTime == TimeSpan.Zero)
+                    {
+                        ModelState.AddModelError($"{i + 1}", "Hizmetin tüm bilgilerini doldurmanız gerekmektedir.");
+                        continue;
+                    }
+
 
                     if (detail.ServiceId == Guid.Empty)
                     {
@@ -245,7 +254,7 @@ namespace BeroxAppy.Web.Pages.Reservations
             var slots = await _reservationAppService.GetAvailableSlotsAsync(employeeId, serviceId, date);
             return new JsonResult(new { availableSlots = slots });
         }
-
+        //musteri arama
         public async Task<IActionResult> OnGetSearchCustomersAsync(string query)
         {
             if (string.IsNullOrWhiteSpace(query) || query.Length < 1)
@@ -274,6 +283,55 @@ namespace BeroxAppy.Web.Pages.Reservations
                 return new JsonResult(new List<object>());
             }
         }
+        //hizmet arama
+        public async Task<IActionResult> OnGetSearchServicesAsync(string? query)
+        {
+            try
+            {
+                var services = await _serviceAppService.SearchServicesAsync(query, 5);
+
+                var result = services.Select(s => new
+                {
+                    id = s.Id,
+                    title = s.Title,
+                    price = s.Price,
+                    duration = s.DurationDisplay
+                });
+
+                return new JsonResult(result);
+
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Hizmet arama sırasında hata oluştu: {Query}", query);
+                return new JsonResult(new List<object>());
+            }
+        }
+
+        //calisan arama
+        public async Task<IActionResult> OnGetSearchEmployeesAsync(string? query)
+        {
+            try
+            {
+                var employees = await _employeeAppService.SearchEmployeesAsync(query, 5);
+
+                var result = employees.Select(e => new
+                {
+                    id = e.Id,
+                    fullName = e.FullName
+                });
+
+                return new JsonResult(result);
+
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Çalışan arama sırasında hata oluştu: {Query}", query);
+                return new JsonResult(new List<object>());
+            }
+        }
+
+
 
         public async Task<IActionResult> OnGetCustomerInfoAsync(Guid customerId)
         {

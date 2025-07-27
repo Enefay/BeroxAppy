@@ -1,10 +1,8 @@
-﻿// ServiceAppService.cs - Düzeltilmiş Versiyon
+﻿using BeroxAppy.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BeroxAppy.Enums;
-using BeroxAppy.Services;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -290,6 +288,26 @@ namespace BeroxAppy.Services
             }
 
             await base.DeleteAsync(id);
+        }
+
+
+        /// <summary>
+        /// Hizmet Arama
+        /// </summary>
+        public async Task<List<ServiceDto>> SearchServicesAsync(string? query, int maxResultCount = 5)
+        {
+            var queryable = await Repository.GetQueryableAsync();
+
+            if (!string.IsNullOrWhiteSpace(query))
+                queryable = queryable.Where(s => s.Title.Contains(query));
+
+            var list = await AsyncExecuter.ToListAsync(
+                queryable.Where(s => s.IsActive)
+                    .OrderBy(s => s.Title)
+                    .Take(maxResultCount)
+            );
+
+            return ObjectMapper.Map<List<Service>, List<ServiceDto>>(list);
         }
 
         /// <summary>

@@ -1,8 +1,6 @@
-﻿// IEmployeeAppService.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using BeroxAppy.Enums;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 
@@ -94,5 +92,11 @@ namespace BeroxAppy.Employees
         /// Belirli bir tarih/saatte müsait mi?
         /// </summary>
         Task<bool> IsAvailableAsync(Guid employeeId, DateTime dateTime, int durationMinutes);
+
+        /// <summary>
+        /// Çalışan Arama
+        /// </summary>
+        Task<List<EmployeeDto>> SearchEmployeesAsync(string? query, int maxResultCount = 5);
+
     }
 }

@@ -1,6 +1,7 @@
-﻿using System;
+﻿using BeroxAppy.Enums;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using BeroxAppy.Enums;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 
@@ -43,5 +44,10 @@ namespace BeroxAppy.Services
         /// Popüler hizmetleri getir (rezervasyon sayısına göre)
         /// </summary>
         Task<ListResultDto<ServiceDto>> GetPopularServicesAsync(int count = 10);
+
+        /// <summary>
+        /// Hizmet Arama
+        /// </summary>
+        Task<List<ServiceDto>> SearchServicesAsync(string? query, int maxResultCount = 5);
     }
 }
