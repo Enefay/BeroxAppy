@@ -450,6 +450,45 @@ namespace BeroxAppy.Employees
             return new ListResultDto<EmployeeDto>(dtos);
         }
 
+
+        /// <summary>
+        /// Çalışan Arama
+        /// </summary>
+        public async Task<List<EmployeeDto>> GetEmployeesByServiceAsync(Guid serviceId,string? query, int maxResultCount = 5)
+        {
+            var queryable = await _employeeServiceRepository.GetQueryableAsync();
+            var employeeQueryable = await Repository.GetQueryableAsync();
+
+            var employees = from es in queryable
+                            join e in employeeQueryable on es.EmployeeId equals e.Id
+                            where es.ServiceId == serviceId && e.IsActive
+                            select e;
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                employees = employees.Where(e =>
+                    (e.FirstName + " " + e.LastName).Contains(query));
+            }
+
+
+            var result = await AsyncExecuter.ToListAsync(
+                    employees
+                        .OrderBy(e => e.FirstName)
+                        .ThenBy(e => e.LastName)
+                        .Take(maxResultCount)
+                );
+            
+            var dtos = ObjectMapper.Map<List<Employee>, List<EmployeeDto>>(result);
+
+            foreach (var dto in dtos)
+            {
+                await EnrichEmployeeDtoAsync(dto);
+            }
+
+            return dtos;
+        }
+
+
         // =============== ÇALIŞMA SAATLERİ ===============
 
         /// <summary>
@@ -571,24 +610,8 @@ namespace BeroxAppy.Employees
         }
 
 
-        /// <summary>
-        /// Çalışan Arama
-        /// </summary>
-        public async Task<List<EmployeeDto>> SearchEmployeesAsync(string? query, int maxResultCount = 5)
-        {
-            var queryable = await Repository.GetQueryableAsync();
+    
 
-            if (!string.IsNullOrWhiteSpace(query))
-                queryable = queryable.Where(e => e.FullName.Contains(query));
-
-            var list = await AsyncExecuter.ToListAsync(
-                queryable.Where(e => e.IsActive)
-                    .OrderBy(e => e.FullName)
-                    .Take(maxResultCount)
-            );
-
-            return ObjectMapper.Map<List<Employee>, List<EmployeeDto>>(list);
-        }
 
 
         /// <summary>

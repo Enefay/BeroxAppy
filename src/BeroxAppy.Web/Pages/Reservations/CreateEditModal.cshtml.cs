@@ -309,11 +309,11 @@ namespace BeroxAppy.Web.Pages.Reservations
         }
 
         //calisan arama
-        public async Task<IActionResult> OnGetSearchEmployeesAsync(string? query)
+        public async Task<IActionResult> OnGetSearchEmployeesByServiceAsync(Guid serviceId, string? query)
         {
             try
             {
-                var employees = await _employeeAppService.SearchEmployeesAsync(query, 5);
+                var employees = await _employeeAppService.GetEmployeesByServiceAsync(serviceId, query, 5);
 
                 var result = employees.Select(e => new
                 {

@@ -307,7 +307,13 @@ namespace BeroxAppy.Services
                     .Take(maxResultCount)
             );
 
-            return ObjectMapper.Map<List<Service>, List<ServiceDto>>(list);
+            var dtos = ObjectMapper.Map<List<Service>, List<ServiceDto>>(list);
+
+            foreach (var dto in dtos)
+            {
+                await EnrichServiceDtoAsync(dto);
+            }
+            return dtos;
         }
 
         /// <summary>

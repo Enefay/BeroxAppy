@@ -96,7 +96,7 @@ namespace BeroxAppy.Employees
         /// <summary>
         /// Çalışan Arama
         /// </summary>
-        Task<List<EmployeeDto>> SearchEmployeesAsync(string? query, int maxResultCount = 5);
+        Task<List<EmployeeDto>> GetEmployeesByServiceAsync(Guid serviceId,string? query, int maxResultCount = 5);
 
     }
 }
