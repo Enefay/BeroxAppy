@@ -13,6 +13,8 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp;
+using BeroxAppy.Employees;
+using BeroxAppy.Finances.FinanceAppDtos;
 
 namespace BeroxAppy.Services
 {
@@ -23,19 +25,26 @@ namespace BeroxAppy.Services
         private readonly IRepository<Reservation, Guid> _reservationRepository;
         private readonly IRepository<CashRegister, Guid> _cashRegisterRepository;
         private readonly Lazy<IReservationAppService> _reservationAppService;
+        private readonly IRepository<EmployeePayment, Guid> _employeePaymentRepository;
+        private readonly IRepository<Employee, Guid> _employeeRepository;
+
 
         public PaymentAppService(
             IRepository<Payment, Guid> paymentRepository,
             IRepository<Customer, Guid> customerRepository,
             IRepository<Reservation, Guid> reservationRepository,
             IRepository<CashRegister, Guid> cashRegisterRepository,
-            Lazy<IReservationAppService> reservationAppService)
+            Lazy<IReservationAppService> reservationAppService,
+            IRepository<EmployeePayment, Guid> employeePaymentRepository,
+            IRepository<Employee, Guid> employeeRepository)
         {
             _paymentRepository = paymentRepository;
             _customerRepository = customerRepository;
             _reservationRepository = reservationRepository;
             _cashRegisterRepository = cashRegisterRepository;
             _reservationAppService = reservationAppService;
+            _employeePaymentRepository = employeePaymentRepository;
+            _employeeRepository = employeeRepository;
         }
 
         // Günlük kasa oluştur veya getir
@@ -59,7 +68,7 @@ namespace BeroxAppy.Services
                     TotalCashIn = 0,
                     TotalCashOut = 0,
                     IsClosed = false,
-                    Note = $"Otomatik oluşturuldu - {today:dd.MM.yyyy}" 
+                    Note = $"Otomatik oluşturuldu - {today:dd.MM.yyyy}"
                 };
 
                 await _cashRegisterRepository.InsertAsync(cashRegister);
@@ -199,7 +208,7 @@ namespace BeroxAppy.Services
                 throw new UserFriendlyException("Ödeme tutarı sıfırdan büyük olmalıdır!");
             }
 
-            Guid? cashRegisterId = input.CashRegisterId; 
+            Guid? cashRegisterId = input.CashRegisterId;
 
             if (input.PaymentMethod == PaymentMethod.Cash)
             {
@@ -389,8 +398,66 @@ namespace BeroxAppy.Services
         }
 
 
+        // Çalışan ödemesi kaydet
+        public async Task<EmployeePaymentDto> CreateEmployeePaymentAsync(CreateEmployeePaymentDto input)
+        {
+            var employee = await _employeeRepository.GetAsync(input.EmployeeId);
 
+            var payment = new EmployeePayment
+            {
+                EmployeeId = input.EmployeeId,
+                SalaryAmount = input.SalaryAmount,
+                CommissionAmount = input.CommissionAmount,
+                BonusAmount = input.BonusAmount,
+                TotalAmount = input.SalaryAmount + input.CommissionAmount + input.BonusAmount,
+                PaymentDate = input.PaymentDate,
+                PaymentMethod = input.PaymentMethod,
+                Note = input.Note,
+                PeriodStart = input.PeriodStart,
+                PeriodEnd = input.PeriodEnd,
+                PaymentType = input.PaymentType
+            };
 
+            await _employeePaymentRepository.InsertAsync(payment);
+
+            // Eğer komisyon ödemesi ise çalışanın komisyonunu düş
+            if (input.PaymentType == PaymentType.Commission)
+            {
+                employee.CurrentPeriodCommission = Math.Max(0, employee.CurrentPeriodCommission - input.CommissionAmount);
+                await _employeeRepository.UpdateAsync(employee);
+            }
+
+            return ObjectMapper.Map<EmployeePayment, EmployeePaymentDto>(payment);
+        }
+
+        //GetTodaysCashRegisterAsync
+        public async Task<CashRegisterDto> GetTodaysCashRegisterAsync()
+        {
+            var today = DateTime.Now.Date;
+            var cashRegister = await _cashRegisterRepository.FindAsync(x => x.Date == today);
+
+            if (cashRegister == null)
+            {
+                // Dünkü kasa
+                var yesterday = today.AddDays(-1);
+                var yesterdayCash = await _cashRegisterRepository
+                    .FindAsync(x => x.Date == yesterday && x.IsClosed);
+
+                cashRegister = new CashRegister
+                {
+                    Date = today,
+                    OpeningBalance = yesterdayCash?.ClosingBalance ?? 0,
+                    ClosingBalance = 0,
+                    TotalCashIn = 0,
+                    TotalCashOut = 0,
+                    IsClosed = false
+                };
+
+                await _cashRegisterRepository.InsertAsync(cashRegister);
+            }
+
+            return ObjectMapper.Map<CashRegister, CashRegisterDto>(cashRegister);
+        }
         private async Task<PaymentDto> MapToPaymentDtoAsync(Payment payment)
         {
             var dto = ObjectMapper.Map<Payment, PaymentDto>(payment);

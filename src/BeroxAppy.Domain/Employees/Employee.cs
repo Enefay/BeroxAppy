@@ -1,4 +1,5 @@
 ﻿using BeroxAppy.Enums;
+using BeroxAppy.Finance;
 using BeroxAppy.Reservations;
 using System;
 using System.Collections.Generic;
@@ -50,9 +51,27 @@ namespace BeroxAppy.Employees
 
         public bool IsActive { get; set; } = true;
 
+
+        //Finans alanları icin kullanilacak
+        public SalaryPeriodType SalaryPeriod { get; set; } = SalaryPeriodType.Monthly;
+        public int PaymentDay { get; set; } = 1; // Ayın kaçında ödenir
+        public PaymentMethod PreferredPaymentMethod { get; set; } = PaymentMethod.BankTransfer;
+
+        // Komisyon takibi için
+        public decimal CurrentPeriodCommission { get; set; } = 0; // Mevcut dönem komisyonu
+        public DateTime LastCommissionResetDate { get; set; } = DateTime.Now;
+        public DateTime? LastSalaryPaymentDate { get; set; }
+
+
         // Navigation properties
         public ICollection<ReservationDetail> ReservationDetails { get; set; }
         public ICollection<EmployeeService> EmployeeServices { get; set; }
         public ICollection<EmployeeWorkingHours> WorkingHours { get; set; }
+
+        //finans
+        public ICollection<EmployeeCommission> Commissions { get; set; }
+        public ICollection<EmployeePayment> Payments { get; set; }
+
+
     }
 }

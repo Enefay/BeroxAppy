@@ -33,8 +33,8 @@ namespace BeroxAppy.Enums
         Cash = 0, //Nakit
         CreditCard = 1, //Kredi Kartı
         DebitCard = 2, //Banka Kartı
-        BankTransfer =3, //Havale/EFT
-        Check =4, //Çek
+        BankTransfer = 3, //Havale/EFT
+        Check = 4, //Çek
         Other = 5 //Diğer
     }
 
@@ -44,5 +44,35 @@ namespace BeroxAppy.Enums
         Partial = 1, //kısmi
         Paid = 2, //odendi
         Refunded = 3 //iade
+    }
+
+    //Finans
+    public enum TransactionType
+    {
+        Income = 1, //gelir
+        Expense = 2 //gider
+    }
+
+    public enum SalaryPeriodType //maaş ödeme zamanı
+    {
+        Daily = 1, //gunluk
+        Weekly = 2, //haftalık
+        BiWeekly = 3, // 2 haftalık
+        Monthly = 4 //aylık
+    }
+
+
+    public enum CommissionType // komisyon tipi
+    {
+        Service = 1, //hizmet
+        Product = 2, //ürün
+        Package = 3, //paket
+    }
+
+    public enum PaymentType
+    {
+        Salary = 1,     // Maaş
+        Commission = 2, // Komisyon
+        Bonus = 3       // Prim/Kesinti
     }
 }

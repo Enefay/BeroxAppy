@@ -78,6 +78,12 @@ public class BeroxAppyDbContext :
     public DbSet<NotificationHistory> NotificationHistories { get; set; }
     public DbSet<ReservationSetting> ReservationSettings { get; set; }
 
+    public DbSet<EmployeeCommission> EmployeeCommissions { get; set; }
+    public DbSet<EmployeePayment> EmployeePayments { get; set; }
+    public DbSet<DailyFinancialSummary> DailyFinancialSummaries { get; set; }
+
+    //DailyFinancialSummary
+
     public BeroxAppyDbContext(DbContextOptions<BeroxAppyDbContext> options)
         : base(options)
     {

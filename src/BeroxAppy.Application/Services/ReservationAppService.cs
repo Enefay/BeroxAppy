@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BeroxAppy.Customers;
 using BeroxAppy.Employees;
 using BeroxAppy.Enums;
+using BeroxAppy.Finance;
 using BeroxAppy.Finances;
 using BeroxAppy.Services;
 using Volo.Abp;
@@ -23,6 +24,7 @@ namespace BeroxAppy.Reservations
         private readonly IRepository<Employee, Guid> _employeeRepository;
         private readonly IRepository<Service, Guid> _serviceRepository;
         private readonly IRepository<EmployeeWorkingHours, Guid> _workingHoursRepository;
+        private readonly IRepository<EmployeeCommission, Guid> _commissionRepository;
         private readonly IPaymentAppService _paymentAppService;
 
         public ReservationAppService(
@@ -32,7 +34,8 @@ namespace BeroxAppy.Reservations
             IRepository<Employee, Guid> employeeRepository,
             IRepository<Service, Guid> serviceRepository,
             IRepository<EmployeeWorkingHours, Guid> workingHoursRepository,
-            IPaymentAppService paymentAppService)
+            IPaymentAppService paymentAppService,
+            IRepository<EmployeeCommission, Guid> commissionRepository)
         {
             _reservationRepository = reservationRepository;
             _reservationDetailRepository = reservationDetailRepository;
@@ -41,6 +44,7 @@ namespace BeroxAppy.Reservations
             _serviceRepository = serviceRepository;
             _workingHoursRepository = workingHoursRepository;
             _paymentAppService = paymentAppService;
+            _commissionRepository = commissionRepository;
         }
 
         // =============== TEMEL CRUD ===============
@@ -1196,6 +1200,12 @@ namespace BeroxAppy.Reservations
                     await _customerRepository.UpdateAsync(customer);
                 }
 
+
+
+                // 10. KOMİSYON İŞLEMLERİ - YENİ EKLEME
+                await ProcessCommissionsAsync(input.ReservationId);
+
+
                 await uow.CompleteAsync();
 
                 // 10. Güncellenmiş DTO'yu döndür
@@ -1205,6 +1215,42 @@ namespace BeroxAppy.Reservations
             {
                 await uow.RollbackAsync();
                 throw;
+            }
+        }
+
+        // CompleteReservationAsync metoduna ekle
+        private async Task ProcessCommissionsAsync(Guid reservationId)
+        {
+            var reservation = await _reservationRepository.GetAsync(reservationId);
+
+            var details = await _reservationDetailRepository.GetListAsync(x => x.ReservationId == reservationId);
+
+
+            foreach (var detail in details)
+            {
+                // Zaten komisyon var mı kontrol et
+                var existingCommission = await _commissionRepository.FindAsync(x =>
+                    x.ReservationDetailId == detail.Id);
+
+                if (existingCommission != null) continue; // Zaten var
+
+                // Komisyon kaydı oluştur
+                var commission = new EmployeeCommission
+                {
+                    EmployeeId = detail.EmployeeId,
+                    ReservationDetailId = detail.Id,
+                    Amount = detail.CommissionAmount,
+                    EarnedDate = DateTime.Now,
+                    Type = CommissionType.Service,
+                    Description = $"Hizmet komisyonu - {reservation.ReservationDate:dd.MM.yyyy}"
+                };
+
+                await _commissionRepository.InsertAsync(commission);
+
+                // Employee'nin toplam komisyonunu güncelle
+                var employee = await _employeeRepository.GetAsync(detail.EmployeeId);
+                employee.CurrentPeriodCommission += detail.CommissionAmount;
+                await _employeeRepository.UpdateAsync(employee);
             }
         }
 

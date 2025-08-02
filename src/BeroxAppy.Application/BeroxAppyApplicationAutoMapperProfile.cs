@@ -3,6 +3,7 @@ using BeroxAppy.Customers;
 using BeroxAppy.Employees;
 using BeroxAppy.Finance;
 using BeroxAppy.Finances;
+using BeroxAppy.Finances.FinanceAppDtos;
 using BeroxAppy.Reservations;
 using BeroxAppy.Services;
 using Volo.Abp.AutoMapper;
@@ -98,6 +99,26 @@ public class BeroxAppyApplicationAutoMapperProfile : Profile
         //payment
         CreateMap<Payment, PaymentDto>().ReverseMap();
         CreateMap<CashRegister, CashRegisterDto>().ReverseMap();
+
+        //finans
+        // Employee Payment mappings
+        CreateMap<EmployeePayment, EmployeePaymentDto>()
+            .ForMember(dest => dest.EmployeeName, opt => opt.MapFrom(src =>
+                src.Employee != null ? $"{src.Employee.FirstName} {src.Employee.LastName}" : ""));
+        CreateMap<CreateEmployeePaymentDto, EmployeePayment>();
+        CreateMap<UpdateEmployeePaymentDto, EmployeePayment>();
+
+        // Daily Financial Summary mappings
+        CreateMap<DailyFinancialSummary, DailyFinancialSummaryDto>()
+            .ForMember(dest => dest.ProfitMargin, opt => opt.MapFrom(src =>
+                src.TotalIncome > 0 ? (src.NetProfit / src.TotalIncome) * 100 : 0));
+        CreateMap<CreateDailyFinancialSummaryDto, DailyFinancialSummary>();
+        CreateMap<UpdateDailyFinancialSummaryDto, DailyFinancialSummary>();
+
+        // Employee Commission mappings
+        CreateMap<EmployeeCommission, CommissionDetailDto>()
+            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.EarnedDate))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description ?? "Komisyon"));
 
 
     }
