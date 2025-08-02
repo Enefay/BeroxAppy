@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BeroxAppy.Finances.FinanceAppDtos;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,5 +27,19 @@ namespace BeroxAppy.Finances
         // Kasa kapatma
         Task<CashRegisterDto> CloseCashRegisterAsync(Guid cashRegisterId, decimal actualClosingBalance, string note = null);
         Task<CashRegisterDto> GetTodaysCashRegisterAsync();
+
+        // Çalışan ödemelerini getir
+        Task<PagedResultDto<EmployeePaymentDto>> GetEmployeePaymentsAsync(GetEmployeePaymentsInput input);
+
+        // Çalışan ödeme detayını getir
+        Task<EmployeePaymentDto> GetEmployeePaymentAsync(Guid id);
+
+        // Çalışan toplam ödeme tutarını getir
+        Task<decimal> GetEmployeeTotalPaymentsAsync(Guid employeeId, DateTime? startDate = null, DateTime? endDate = null);
+
+        /// <summary>
+        /// Kapatılmış bir kasayı tekrar açar (sadece bugünkü kasa için).
+        /// </summary>
+        Task<CashRegisterDto> ReopenCashRegisterAsync(Guid cashRegisterId);
     }
 }

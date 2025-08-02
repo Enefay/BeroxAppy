@@ -1,0 +1,391 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using BeroxAppy.Web.Pages.Finance.Dashboard
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IStringLocalizer<BeroxAppyResource> L
+
+@section scripts
+{
+        <abp-script-bundle>
+            <abp-script src="/Pages/Finance/Dashboard/PayCommissionModal.js" />
+            <abp-script src="/Pages/Finance/Dashboard/Index.js" />
+        </abp-script-bundle>
+}
+
+<div class="container-fluid">
+    <!-- Tarih Filtresi -->
+    <abp-row class="mb-3">
+        <abp-column size="_6">
+            <h1 class="mb-0">Finansal Dashboard</h1>
+            <small class="text-muted">@Model.SelectedDate.ToString("dd MMMM yyyy, dddd")</small>
+        </abp-column>
+        <abp-column size="_6" class="text-end">
+            <div class="input-group" style="max-width: 200px; margin-left: auto;">
+                <input type="date" id="DateFilter" class="form-control" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" />
+                <abp-button id="RefreshButton" text="Yenile" icon="refresh" button-type="Primary" />
+            </div>
+        </abp-column>
+    </abp-row>
+
+    <!-- Üst Kartlar -->
+    <abp-row class="mb-4">
+        <abp-column size="_3">
+            <abp-card class="border-start border-success border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-success mb-1">Günlük Gelir</h5>
+                            <h3 class="mb-0">₺@Model.Dashboard.TodayIncome.ToString("N2")</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-arrow-up fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_3">
+            <abp-card class="border-start border-danger border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-danger mb-1">Günlük Gider</h5>
+                            <h3 class="mb-0">₺@Model.Dashboard.TodayExpenses.ToString("N2")</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-arrow-down fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_3">
+            <abp-card class="border-start border-info border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-info mb-1">Net Kar</h5>
+                            <h3 class="mb-0 @(Model.Dashboard.TodayProfit >= 0 ? "text-success" : "text-danger")">₺@Model.Dashboard.TodayProfit.ToString("N2")</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-line fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_3">
+            <abp-card class="border-start border-warning border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-warning mb-1">Bekleyen Komisyon</h5>
+                            <h3 class="mb-0">₺@Model.Dashboard.PendingCommissions.ToString("N2")</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- Kasa Durumu -->
+    <abp-row class="mb-4">
+        <abp-column size="_12">
+            <abp-card class="@(Model.CashRegister.IsClosed ? "border-secondary" : "border-primary") border-2">
+                <abp-card-header>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cash-register me-2"></i>
+                            Günlük Kasa Durumu
+                            <span class="badge @(Model.CashRegister.IsClosed ? "bg-secondary" : "bg-success") ms-2">
+                                @(Model.CashRegister.IsClosed ? "Kapalı" : "Açık")
+                            </span>
+                        </h5>
+                        <div>
+                            @if (!Model.CashRegister.IsClosed)
+                            {
+                                    <abp-button id="CloseCashButton" text="Kasayı Kapat" icon="lock" button-type="Warning" size="Small" />
+                            }
+                            <abp-button text="Detaylar" icon="eye" button-type="Outline_Primary" size="Small" />
+                        </div>
+                    </div>
+                </abp-card-header>
+                <abp-card-body>
+                    <abp-row>
+                        <abp-column size="_3">
+                            <div class="text-center">
+                                <small class="text-muted">Açılış Bakiyesi</small>
+                                <h5 class="mb-0">₺@Model.CashRegister.OpeningBalance.ToString("N2")</h5>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_3">
+                            <div class="text-center">
+                                <small class="text-muted">Nakit Giriş</small>
+                                <h5 class="mb-0 text-success">₺@Model.CashRegister.TotalCashIn.ToString("N2")</h5>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_3">
+                            <div class="text-center">
+                                <small class="text-muted">Nakit Çıkış</small>
+                                <h5 class="mb-0 text-danger">₺@Model.CashRegister.TotalCashOut.ToString("N2")</h5>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_3">
+                            <div class="text-center">
+                                <small class="text-muted">Teorik Bakiye</small>
+                                <h5 class="mb-0">₺@((Model.CashRegister.OpeningBalance + Model.CashRegister.TotalCashIn - Model.CashRegister.TotalCashOut).ToString("N2"))</h5>
+                            </div>
+                        </abp-column>
+                    </abp-row>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- Hızlı İşlemler -->
+    <abp-row class="mb-4">
+        <abp-column size="_12">
+            <abp-card>
+                <abp-card-header>
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Hızlı İşlemler</h5>
+                </abp-card-header>
+                <abp-card-body>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <abp-button text="Rezervasyon Oluştur" icon="calendar-plus" button-type="Success" />
+                        <abp-button text="Ödeme Kaydet" icon="credit-card" button-type="Primary" />
+                        <abp-button id="QuickCommissionButton" text="Komisyon Öde" icon="money-bill" button-type="Warning" />
+                        <abp-button text="Raporlar" icon="chart-bar" button-type="Info" />
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- İçerik Alanı -->
+    <abp-row class="mb-4">
+        <!-- Sol Sütun: Ödeme Yöntemi Dağılımı -->
+        <abp-column size="_6">
+            <abp-card>
+                <abp-card-header>
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Ödeme Yöntemi Dağılımı</h5>
+                </abp-card-header>
+                <abp-card-body>
+                    @{
+                        var totalCash = Model.CashRegister.TotalCashIn;
+                        var totalOther = Model.Dashboard.TodayIncome - totalCash;
+                    }
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h6 class="text-success"><i class="fas fa-money-bill-wave me-2"></i>Nakit</h6>
+                                <h4>₺@totalCash.ToString("N2")</h4>
+                                <small class="text-muted">@((totalCash / Math.Max(Model.Dashboard.TodayIncome, 1) * 100).ToString("F1"))%</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-primary"><i class="fas fa-credit-card me-2"></i>Kart/Diğer</h6>
+                            <h4>₺@totalOther.ToString("N2")</h4>
+                            <small class="text-muted">@((totalOther / Math.Max(Model.Dashboard.TodayIncome, 1) * 100).ToString("F1"))%</small>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+
+        <!-- Sağ Sütun: Bekleyen Komisyonlar -->
+        <abp-column size="_6">
+            <abp-card>
+                <abp-card-header>
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Bekleyen Komisyonlar</h5>
+                </abp-card-header>
+                <abp-card-body>
+                    @if (Model.Dashboard.EmployeeCommissions?.Any() == true)
+                    {
+                            <div class="list-group list-group-flush">
+                            @foreach (var commission in Model.Dashboard.EmployeeCommissions.Take(5))
+                            {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                            <div>
+                                                <h6 class="mb-0">@commission.EmployeeName</h6>
+                                                <small class="text-muted">
+                                            @if (commission.LastPaymentDate.HasValue)
+                                            {
+                                                            <span>Son ödeme: @commission.LastPaymentDate.Value.ToString("dd.MM.yyyy")</span>
+                                            }
+                                            else
+                                            {
+                                                            <span>Hiç ödeme yapılmamış</span>
+                                            }
+                                                </small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-warning text-dark">₺@commission.CurrentCommission.ToString("N2")</span>
+                                        @if (commission.CanPay)
+                                        {
+                                                        <br />
+                                                        <abp-button 
+                                                            text="Öde" 
+                                                            icon="money-bill" 
+                                                            button-type="Outline_Success" 
+                                                            size="Small" 
+                                                            class="mt-1 pay-commission-btn"
+                                                            data-employee-id="@commission.EmployeeId"
+                                                            data-employee-name="@commission.EmployeeName"
+                                                            data-amount="@commission.CurrentCommission" />
+                                        }
+                                            </div>
+                                        </div>
+                            }
+                            </div>
+                    }
+                    else
+                    {
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                <p class="mb-0">Bekleyen komisyon bulunmuyor</p>
+                            </div>
+                    }
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- Bugünkü Rezervasyonlar -->
+    <abp-row>
+        <abp-column size="_12">
+            <abp-card>
+                <abp-card-header>
+                    <h5 class="mb-0"><i class="fas fa-calendar-day me-2"></i>Bugünkü Rezervasyonlar</h5>
+                </abp-card-header>
+                <abp-card-body>
+                    @if (Model.TodayReservations?.Any() == true)
+                    {
+                            <abp-table striped-rows="true" responsive="true">
+                                <thead>
+                                    <tr>
+                                        <th>Saat</th>
+                                        <th>Müşteri</th>
+                                        <th>Telefon</th>
+                                        <th>Hizmetler</th>
+                                        <th>Tutar</th>
+                                        <th>Durum</th>
+                                        <th>Ödeme</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var reservation in Model.TodayReservations.Take(10))
+                                {
+                                            <tr>
+                                                <td>
+                                                    <strong>@reservation.ReservationTimeDisplay</strong>
+                                            @if (reservation.IsWalkIn)
+                                            {
+                                                            <br />
+
+                                                <span class="badge bg-secondary">Adisyon</span>
+                                            }
+                                                </td>
+                                                <td>
+                                                    <strong>@reservation.CustomerName</strong>
+                                                </td>
+                                                <td>@reservation.CustomerPhone</td>
+                                                <td>
+                                                    <small>
+                                                @string.Join(", ", reservation.ReservationDetails?.Select(d => d.ServiceTitle) ?? new List<string>())
+                                                    </small>
+                                                </td>
+                                                <td><strong>₺@reservation.FinalPrice.ToString("N2")</strong></td>
+                                                <td>
+                                                    <span class="badge @(reservation.Status.ToString() switch 
+                                            { 
+                                                "Arrived" => "bg-success",
+                                                "NoShow" => "bg-danger", 
+                                                _ => "bg-warning text-dark" 
+                                            })">
+                                                @reservation.StatusDisplay
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @(reservation.PaymentStatus.ToString() switch 
+                                            { 
+                                                "Paid" => "bg-success",
+                                                "Partial" => "bg-warning text-dark", 
+                                                _ => "bg-secondary" 
+                                            })">
+                                                @reservation.PaymentStatusDisplay
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <abp-button text="Detay" icon="eye" button-type="Outline_Primary" size="Small" />
+                                                </td>
+                                            </tr>
+                                }
+                                </tbody>
+                            </abp-table>
+                    }
+                    else
+                    {
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                                <h5>Bugün rezervasyon bulunmuyor</h5>
+                                <p class="mb-0">Yeni rezervasyon oluşturmak için yukarıdaki hızlı işlemler butonunu kullanabilirsiniz.</p>
+                            </div>
+                    }
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+</div>
+
+<!-- Komisyon Ödeme Modalı -->
+<div class="modal fade" id="PayCommissionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Komisyon Öde</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="PayCommissionForm">
+                    <input type="hidden" id="EmployeeId" />
+                    <div class="mb-3">
+                        <label class="form-label">Çalışan</label>
+                        <input type="text" id="EmployeeName" class="form-control" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bekleyen Komisyon</label>
+                        <input type="text" id="PendingAmount" class="form-control" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ödenecek Tutar *</label>
+                        <input type="number" id="PaymentAmount" class="form-control" min="0" step="0.01" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ödeme Yöntemi *</label>
+                        <select id="PaymentMethod" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            <option value="0">Nakit</option>
+                            <option value="1">Kredi Kartı</option>
+                            <option value="2">Banka Kartı</option>
+                            <option value="3">Havale/EFT</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Not</label>
+                        <textarea id="PaymentNote" class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success" id="PayCommissionSaveButton">Ödeme Yap</button>
+            </div>
+        </div>
+    </div>
+</div>

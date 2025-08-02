@@ -9,7 +9,7 @@ namespace BeroxAppy.Finances
 {
     public class CreatePaymentDto
     {
-        public Guid CustomerId { get; set; }
+        public Guid? CustomerId { get; set; }
         public Guid? ReservationId { get; set; }
         public decimal Amount { get; set; }
         public PaymentMethod PaymentMethod { get; set; }

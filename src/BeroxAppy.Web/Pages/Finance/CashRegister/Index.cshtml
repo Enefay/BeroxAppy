@@ -1,0 +1,428 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using BeroxAppy.Web.Pages.Finance.CashRegister
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IStringLocalizer<BeroxAppyResource> L
+
+@section scripts
+{
+    <abp-script-bundle>
+        <abp-script src="/Pages/Finance/CashRegister/Index.js" />
+    </abp-script-bundle>
+}
+
+<div class="container-fluid">
+    <!-- Sayfa Başlığı -->
+    <abp-row class="mb-3">
+        <abp-column size="_8">
+            <h1 class="mb-0">Günlük Kasa Yönetimi</h1>
+            <small class="text-muted">@Model.SelectedDate.ToString("dd MMMM yyyy, dddd") - Kasa İşlemleri</small>
+        </abp-column>
+        <abp-column size="_4" class="text-end">
+            <div class="input-group" style="max-width: 250px; margin-left: auto;">
+                <input type="date" id="DateFilter" class="form-control" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" />
+                <abp-button id="RefreshButton" text="Yenile" icon="refresh" button-type="Primary" />
+            </div>
+        </abp-column>
+    </abp-row>
+
+    <!-- Kasa Durumu Kartı -->
+    <abp-row class="mb-4">
+        <abp-column size="_12">
+            <abp-card class="@(Model.CashRegister.IsClosed ? "border-secondary" : "border-success") border-3">
+                <abp-card-header>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-cash-register me-2"></i>
+                            Kasa Durumu
+                            <span class="badge @(Model.CashRegister.IsClosed ? "bg-secondary" : "bg-success") ms-2 fs-6">
+                                @(Model.CashRegister.IsClosed ? "KAPALI" : "AÇIK")
+                            </span>
+                        </h4>
+                        <div>
+                            @if (!Model.CashRegister.IsClosed)
+                            {
+                                <abp-button id="CloseCashButton" text="Kasayı Kapat" icon="lock" button-type="Warning" />
+                            }
+                            else if (Model.SelectedDate.Date == DateTime.Now.Date)
+                            {
+                                <abp-button id="ReopenCashButton" text="Kasayı Tekrar Aç" icon="unlock" button-type="Success" />
+                            }
+                        </div>
+                    </div>
+                </abp-card-header>
+                <abp-card-body>
+                    <abp-row class="text-center">
+                        <abp-column size="_2">
+                            <div class="border-end">
+                                <h6 class="text-muted mb-1">Açılış Bakiyesi</h6>
+                                <h4 class="mb-0 text-info">₺@Model.CashRegister.OpeningBalance.ToString("N2")</h4>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_2">
+                            <div class="border-end">
+                                <h6 class="text-muted mb-1">Nakit Giriş</h6>
+                                <h4 class="mb-0 text-success">+₺@Model.CashRegister.TotalCashIn.ToString("N2")</h4>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_2">
+                            <div class="border-end">
+                                <h6 class="text-muted mb-1">Nakit Çıkış</h6>
+                                <h4 class="mb-0 text-danger">-₺@Model.CashRegister.TotalCashOut.ToString("N2")</h4>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_2">
+                            <div class="border-end">
+                                <h6 class="text-muted mb-1">Teorik Bakiye</h6>
+                                <h4 class="mb-0 text-primary">₺@Model.TheoreticalBalance.ToString("N2")</h4>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_2">
+                            <div class="border-end">
+                                <h6 class="text-muted mb-1">Fiili Bakiye</h6>
+                                <h4 class="mb-0">₺@Model.CashRegister.ClosingBalance.ToString("N2")</h4>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_2">
+                            <div>
+                                <h6 class="text-muted mb-1">Fark</h6>
+                                <h4 class="mb-0 @(Model.Difference >= 0 ? "text-success" : "text-danger")">
+                                    @(Model.Difference >= 0 ? "+" : "")₺@Model.Difference.ToString("N2")
+                                </h4>
+                            </div>
+                        </abp-column>
+                    </abp-row>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.CashRegister.Note))
+                    {
+                        <hr />
+                        <div class="alert alert-info mb-0">
+                            <strong>Not:</strong> @Model.CashRegister.Note
+                        </div>
+                    }
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- Hızlı İşlemler -->
+    @if (!Model.CashRegister.IsClosed)
+    {
+        <abp-row class="mb-4">
+            <abp-column size="_12">
+                <abp-card>
+                    <abp-card-header>
+                        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Hızlı İşlemler</h5>
+                    </abp-card-header>
+                    <abp-card-body>
+                        <abp-row>
+                            <abp-column size="_3">
+                                <abp-button id="CashInButton" text="Nakit Giriş" icon="plus-circle" button-type="Success" size="Large" class="w-100" />
+                            </abp-column>
+                            <abp-column size="_3">
+                                <abp-button id="CashOutButton" text="Nakit Çıkış" icon="minus-circle" button-type="Danger" size="Large" class="w-100" />
+                            </abp-column>
+                            <abp-column size="_3">
+                                <abp-button id="CountCashButton" text="Kasa Say" icon="calculator" button-type="Info" size="Large" class="w-100" />
+                            </abp-column>
+                            <abp-column size="_3">
+                                <abp-button id="ViewReportButton" text="Rapor Görüntüle" icon="chart-bar" button-type="Outline_Primary" size="Large" class="w-100" />
+                            </abp-column>
+                        </abp-row>
+                    </abp-card-body>
+                </abp-card>
+            </abp-column>
+        </abp-row>
+    }
+
+    <!-- Günlük İşlemler -->
+    <abp-row>
+        <abp-column size="_12">
+            <abp-card>
+                <abp-card-header>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Günlük Nakit İşlemleri (@Model.CashPayments.Count adet)
+                        </h5>
+                        <div>
+                            <span class="badge bg-success me-2">Giriş: ₺@Model.CashPayments.Where(p => !p.IsRefund && p.ReservationId.HasValue).Sum(p => p.Amount).ToString("N2")</span>
+                            <span class="badge bg-danger me-2">Çıkış: ₺@Model.CashPayments.Where(p => p.IsRefund || !p.ReservationId.HasValue).Sum(p => p.Amount).ToString("N2")</span>
+                        </div>
+                    </div>
+                </abp-card-header>
+                <abp-card-body class="p-0">
+                    @if (Model.CashPayments?.Any() == true)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Saat</th>
+                                        <th>İşlem Tipi</th>
+                                        <th>Müşteri</th>
+                                        <th>Açıklama</th>
+                                        <th class="text-end">Tutar</th>
+                                        <th>Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in Model.CashPayments.OrderByDescending(p => p.PaymentDate))
+                                    {
+                                        <tr class="@(payment.IsRefund ? "table-warning" : "")">
+                                            <td>
+                                                <strong>@payment.PaymentDate.ToString("HH:mm")</strong>
+                                                <br />
+                                                <small class="text-muted">@payment.PaymentDate.ToString("dd.MM.yyyy")</small>
+                                            </td>
+                                            <td>
+                                                @if (payment.ReservationId.HasValue)
+                                                {
+                                                    <span class="badge bg-primary">
+                                                        <i class="fas fa-calendar me-1"></i>Rezervasyon
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-hand-holding-usd me-1"></i>Diğer
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(payment.CustomerName))
+                                                {
+                                                    <strong>@payment.CustomerName</strong>
+                                                    if (!string.IsNullOrEmpty(payment.CustomerPhone))
+                                                    {
+                                                        <br />
+                                                        <small class="text-muted">@payment.CustomerPhone</small>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @payment.Description
+                                                @if (payment.ReservationId.HasValue)
+                                                {
+                                                    <br />
+                                                    <small class="text-muted">@payment.ReservationDisplay</small>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                <strong class="@(payment.IsRefund ? "text-danger" : "text-success")">
+                                                    @(payment.IsRefund ? "-" : "+")₺@payment.Amount.ToString("N2")
+                                                </strong>
+                                            </td>
+                                            <td>
+                                                @if (payment.IsRefund)
+                                                {
+                                                    <span class="badge bg-warning text-dark">İade</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">Tahsilat</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Bugün nakit işlem yapılmamış</h5>
+                            <p class="text-muted">Nakit ödeme alındığında burada görünecektir.</p>
+                        </div>
+                    }
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+</div>
+
+<!-- Kasa Kapama Modalı -->
+<div class="modal fade" id="CloseCashModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-lock me-2"></i>Kasayı Kapat
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="CloseCashForm">
+                    <!-- Özet Bilgi -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>Kasa Özeti</h6>
+                        <abp-row>
+                            <abp-column size="_4">
+                                <strong>Açılış:</strong> ₺@Model.CashRegister.OpeningBalance.ToString("N2")
+                            </abp-column>
+                            <abp-column size="_4">
+                                <strong>Giriş:</strong> ₺@Model.CashRegister.TotalCashIn.ToString("N2")
+                            </abp-column>
+                            <abp-column size="_4">
+                                <strong>Çıkış:</strong> ₺@Model.CashRegister.TotalCashOut.ToString("N2")
+                            </abp-column>
+                        </abp-row>
+                    </div>
+
+                    <abp-row>
+                        <abp-column size="_6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Teorik Kapanış Bakiyesi</label>
+                                <input type="text" class="form-control form-control-lg text-primary fw-bold"
+                                       value="₺@Model.TheoreticalBalance.ToString("N2")" readonly />
+                            </div>
+                        </abp-column>
+                        <abp-column size="_6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Fiili Kapanış Bakiyesi *</label>
+                                <input type="number" id="ActualClosingBalance" class="form-control form-control-lg"
+                                       step="0.01" min="0" value="@Model.TheoreticalBalance" required />
+                            </div>
+                        </abp-column>
+                    </abp-row>
+
+                    <div class="mb-3">
+                        <label class="form-label">Kapanış Notu</label>
+                        <textarea id="ClosingNote" class="form-control" rows="3"
+                                  placeholder="Kasa kapanışı ile ilgili notlarınızı yazabilirsiniz..."></textarea>
+                    </div>
+
+                    <!-- Fark Uyarısı -->
+                    <div id="DifferenceAlert" class="alert alert-warning" style="display: none;">
+                        <strong>Dikkat!</strong> Teorik ve fiili bakiye arasında fark var.
+                        <div id="DifferenceAmount" class="mt-1"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-warning" id="CloseCashSaveButton">
+                    <i class="fas fa-lock me-1"></i>Kasayı Kapat
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Nakit İşlem Modalı -->
+<div class="modal fade" id="CashTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" id="TransactionModalHeader">
+                <h5 class="modal-title" id="TransactionModalTitle">
+                    <i class="fas fa-money-bill me-2"></i>Nakit İşlemi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="CashTransactionForm">
+                    <input type="hidden" id="TransactionType" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">İşlem Tutarı *</label>
+                        <input type="number" id="TransactionAmount" class="form-control form-control-lg"
+                               min="0" step="0.01" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama *</label>
+                        <input type="text" id="TransactionDescription" class="form-control"
+                               placeholder="İşlem açıklaması..." required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Detaylı Not</label>
+                        <textarea id="TransactionNote" class="form-control" rows="2"
+                                  placeholder="Ek bilgiler..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn" id="TransactionSaveButton">
+                    <i class="fas fa-save me-1"></i>Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kasa Sayım Modalı -->
+<div class="modal fade" id="CashCountModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-calculator me-2"></i>Kasa Sayımı
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong>Teorik Bakiye:</strong> ₺@Model.TheoreticalBalance.ToString("N2")
+                </div>
+
+                <form id="CashCountForm">
+                    <h6 class="fw-bold mb-3">Banknotlar</h6>
+                    <abp-row class="mb-3">
+                        <abp-column size="_3">
+                            <label class="form-label">200 TL</label>
+                            <input type="number" class="form-control cash-count" data-value="200" min="0" />
+                        </abp-column>
+                        <abp-column size="_3">
+                            <label class="form-label">100 TL</label>
+                            <input type="number" class="form-control cash-count" data-value="100" min="0" />
+                        </abp-column>
+                        <abp-column size="_3">
+                            <label class="form-label">50 TL</label>
+                            <input type="number" class="form-control cash-count" data-value="50" min="0" />
+                        </abp-column>
+                        <abp-column size="_3">
+                            <label class="form-label">20 TL</label>
+                            <input type="number" class="form-control cash-count" data-value="20" min="0" />
+                        </abp-column>
+                    </abp-row>
+
+                    <abp-row class="mb-3">
+                        <abp-column size="_3">
+                            <label class="form-label">10 TL</label>
+                            <input type="number" class="form-control cash-count" data-value="10" min="0" />
+                        </abp-column>
+                        <abp-column size="_3">
+                            <label class="form-label">5 TL</label>
+                            <input type="number" class="form-control cash-count" data-value="5" min="0" />
+                        </abp-column>
+                        <abp-column size="_3">
+                            <label class="form-label">Bozukluk</label>
+                            <input type="number" id="CoinsAmount" class="form-control" step="0.01" min="0" />
+                        </abp-column>
+                        <abp-column size="_3">
+                            <div class="mt-4">
+                                <h5 class="text-primary">Toplam: <span id="CountTotal">₺0.00</span></h5>
+                            </div>
+                        </abp-column>
+                    </abp-row>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-info" onclick="$('#ActualClosingBalance').val($('#CountTotal').text().replace('₺', '').replace(',', ''));$('#CashCountModal').modal('hide');$('#CloseCashModal').modal('show');">
+                    <i class="fas fa-check me-1"></i>Sayımı Tamamla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

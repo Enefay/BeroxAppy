@@ -7,6 +7,11 @@ public class BeroxAppyMenus
     public const string Reservations = Prefix + ".Reservations";
     public const string WalkIns = Prefix + ".WalkIns";
     public const string Commission = Prefix + ".Commission";
+    public const string Finance = "Finance";
+    public const string FinanceDashboard = "Finance.Dashboard";
+    public const string FinanceCommission = "Finance.Commission";
+    public const string FinanceCashRegister = "Finance.CashRegister";
+    
 
     //Add your menu items here...
 

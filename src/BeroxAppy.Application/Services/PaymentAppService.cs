@@ -77,8 +77,40 @@ namespace BeroxAppy.Services
             return cashRegister;
         }
 
+
+        // Kasa tekrar açma metodu (IPaymentAppService interface'ine de ekle)
+        public async Task<CashRegisterDto> ReopenCashRegisterAsync(Guid cashRegisterId)
+        {
+            var cashRegister = await _cashRegisterRepository.GetAsync(cashRegisterId);
+
+            if (!cashRegister.IsClosed)
+            {
+                throw new UserFriendlyException("Kasa zaten açık!");
+            }
+
+            // Sadece bugünkü kasa tekrar açılabilir
+            if (cashRegister.Date.Date != DateTime.Now.Date)
+            {
+                throw new UserFriendlyException("Sadece bugünkü kasa tekrar açılabilir!");
+            }
+
+            cashRegister.IsClosed = false;
+            cashRegister.Note += $" | Tekrar açıldı: {DateTime.Now:dd.MM.yyyy HH:mm}";
+
+            await _cashRegisterRepository.UpdateAsync(cashRegister);
+
+            return ObjectMapper.Map<CashRegister, CashRegisterDto>(cashRegister);
+        }
+
         public async Task<PaymentDto> CreateAsync(CreatePaymentDto input)
         {
+
+            // Sistem müşterisi kontrolü -> eğer rezervasyon odemesi değilse müşteriye sistem musterisi atanacak...
+            if (input.CustomerId == Guid.Empty && !input.ReservationId.HasValue)
+            {
+                input.CustomerId = await GetSystemCustomerIdAsync();
+            }
+
 
             // Nakit ödeme ise kasaya ekle
             Guid? cashRegisterId = null;
@@ -102,7 +134,7 @@ namespace BeroxAppy.Services
 
             var payment = new Payment
             {
-                CustomerId = input.CustomerId,
+                CustomerId = input.CustomerId.Value,
                 ReservationId = input.ReservationId,
                 Amount = input.Amount,
                 PaymentMethod = input.PaymentMethod,
@@ -123,7 +155,7 @@ namespace BeroxAppy.Services
             }
 
             // Müşteri borcunu güncelle
-            await UpdateCustomerDebtAsync(input.CustomerId, input.Amount, true);
+            await UpdateCustomerDebtAsync(input.CustomerId.Value, input.Amount, true);
 
             return await MapToPaymentDtoAsync(payment);
         }
@@ -458,6 +490,76 @@ namespace BeroxAppy.Services
 
             return ObjectMapper.Map<CashRegister, CashRegisterDto>(cashRegister);
         }
+
+
+        // Çalışan ödemelerini getir
+        public async Task<PagedResultDto<EmployeePaymentDto>> GetEmployeePaymentsAsync(GetEmployeePaymentsInput input)
+        {
+            var queryable = await _employeePaymentRepository.GetQueryableAsync();
+
+            // Filtreleme
+            if (input.EmployeeId.HasValue)
+            {
+                queryable = queryable.Where(x => x.EmployeeId == input.EmployeeId);
+            }
+
+            if (input.PaymentType.HasValue)
+            {
+                queryable = queryable.Where(x => x.PaymentType == input.PaymentType);
+            }
+
+            if (input.StartDate.HasValue)
+            {
+                queryable = queryable.Where(x => x.PaymentDate >= input.StartDate.Value.Date);
+            }
+
+            if (input.EndDate.HasValue)
+            {
+                queryable = queryable.Where(x => x.PaymentDate <= input.EndDate.Value.Date.AddDays(1));
+            }
+
+            // Sıralama - en yeni önce
+            queryable = queryable.OrderByDescending(x => x.PaymentDate);
+
+            var totalCount = queryable.Count();
+            var payments = queryable
+                .Skip(input.SkipCount)
+                .Take(input.MaxResultCount)
+                .ToList();
+
+            var dtos = ObjectMapper.Map<List<EmployeePayment>, List<EmployeePaymentDto>>(payments);
+
+            return new PagedResultDto<EmployeePaymentDto>(totalCount, dtos);
+        }
+
+        // Çalışan ödeme detayını getir
+        public async Task<EmployeePaymentDto> GetEmployeePaymentAsync(Guid id)
+        {
+            var payment = await _employeePaymentRepository.GetAsync(id);
+            return ObjectMapper.Map<EmployeePayment, EmployeePaymentDto>(payment);
+        }
+
+        // Çalışan toplam ödeme tutarını getir
+        public async Task<decimal> GetEmployeeTotalPaymentsAsync(Guid employeeId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var queryable = await _employeePaymentRepository.GetQueryableAsync();
+
+            queryable = queryable.Where(x => x.EmployeeId == employeeId);
+
+            if (startDate.HasValue)
+            {
+                queryable = queryable.Where(x => x.PaymentDate >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                queryable = queryable.Where(x => x.PaymentDate <= endDate.Value.Date.AddDays(1));
+            }
+
+            return queryable.Sum(x => x.TotalAmount);
+        }
+
+
         private async Task<PaymentDto> MapToPaymentDtoAsync(Payment payment)
         {
             var dto = ObjectMapper.Map<Payment, PaymentDto>(payment);
@@ -545,5 +647,32 @@ namespace BeroxAppy.Services
                 _ => "Bilinmiyor"
             };
         }
+
+        //Genel müşteri için sistem müşterisi oluşturma/getirme
+        private async Task<Guid> GetSystemCustomerIdAsync()
+        {
+            // Sistem müşterisi var mı kontrol et
+            var systemCustomer = await _customerRepository.FindAsync(x => x.FullName == "Sistem Müşteri");
+
+            if (systemCustomer != null)
+            {
+                return systemCustomer.Id;
+            }
+
+            // Yoksa oluştur
+            var newSystemCustomer = new Customer
+            {
+                FullName = "Sistem Müşterisi",
+                Phone = "0000000000",
+                Email = "sistem@beroxapps.com",
+                DiscountRate = 0,
+                TotalDebt = 0,
+                IsActive = true
+            };
+
+            await _customerRepository.InsertAsync(newSystemCustomer);
+            return newSystemCustomer.Id;
+        }
+
     }
 }

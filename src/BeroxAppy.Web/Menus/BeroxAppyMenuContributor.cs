@@ -102,15 +102,36 @@ public class BeroxAppyMenuContributor : IMenuContributor
         context.Menu.AddItem(walkInsMenu);
 
 
-        //Finans
-        context.Menu.AddItem(new ApplicationMenuItem(
-          BeroxAppyMenus.Commission,
-          "Komisyonlar",
-          url: "/Finance/Commissions",
-          icon: "fas fa-hand-holding-usd"
-          //requiredPermissionName: FinancePermissions.Commission.Default
-      ));
+        // Finance menüsü
+        var financeMenu = new ApplicationMenuItem(
+            BeroxAppyMenus.Finance,
+            "Finans",
+            "/Finance/Dashboard",
+            icon: "fas fa-chart-line"
+        );
 
+        financeMenu.AddItem(new ApplicationMenuItem(
+            BeroxAppyMenus.FinanceDashboard,
+            "Dashboard",
+            "/Finance/Dashboard",
+            icon: "fas fa-tachometer-alt"
+        ));
+
+        financeMenu.AddItem(new ApplicationMenuItem(
+           BeroxAppyMenus.FinanceCommission,
+           "Komisyonlar",
+           "/Finance/Commissions",
+           icon: "fas fa-money-bill-wave"
+       ));
+
+        financeMenu.AddItem(new ApplicationMenuItem(
+         BeroxAppyMenus.FinanceCommission,
+         "Kasa Yönetimi",
+         "/Finance/CashRegister",
+         icon: "fas fa-cash-register"
+         ));
+
+        context.Menu.AddItem(financeMenu);
 
         if (MultiTenancyConsts.IsEnabled)
         {
