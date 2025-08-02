@@ -25,6 +25,6 @@ namespace BeroxAppy.Finances
 
         // Kasa kapatma
         Task<CashRegisterDto> CloseCashRegisterAsync(Guid cashRegisterId, decimal actualClosingBalance, string note = null);
-
+        Task<CashRegisterDto> GetTodaysCashRegisterAsync();
     }
 }

@@ -77,6 +77,9 @@ public class BeroxAppyMenuContributor : IMenuContributor
             icon: "fas fa-users-cog"
         );
 
+
+
+
         context.Menu.AddItem(employeesMenu);
 
 
@@ -94,8 +97,20 @@ public class BeroxAppyMenuContributor : IMenuContributor
           icon: "fas fa-cash-register"
         );
 
+
         context.Menu.AddItem(reservationsMenu);
         context.Menu.AddItem(walkInsMenu);
+
+
+        //Finans
+        context.Menu.AddItem(new ApplicationMenuItem(
+          BeroxAppyMenus.Commission,
+          "Komisyonlar",
+          url: "/Finance/Commissions",
+          icon: "fas fa-hand-holding-usd"
+          //requiredPermissionName: FinancePermissions.Commission.Default
+      ));
+
 
         if (MultiTenancyConsts.IsEnabled)
         {

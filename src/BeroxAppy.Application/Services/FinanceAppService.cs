@@ -197,8 +197,13 @@ namespace BeroxAppy.Services
             }
             else
             {
-                // Güncel verileri hesapla ve güncelle
-                await UpdateDailySummaryAsync(summary);
+
+                // Gün kapatılmamışsa güncel verileri hesapla ve güncelle
+                // Kapatılmış günler için veriyi koruma
+                if (!summary.IsClosed) //todo kontrol
+                {
+                    await UpdateDailySummaryAsync(summary);
+                }
             }
 
             return ObjectMapper.Map<DailyFinancialSummary, DailyFinancialSummaryDto>(summary);
@@ -306,10 +311,13 @@ namespace BeroxAppy.Services
         {
             var summary = new DailyFinancialSummary
             {
-                Date = date.Date
+                Date = date.Date,
+                IsClosed = false
             };
 
+            // İlk oluşturulduğunda hesaplamaları yap
             await CalculateDailySummaryAsync(summary);
+            // Veritabanına kaydet
             await _dailySummaryRepository.InsertAsync(summary);
 
             return summary;
@@ -320,6 +328,7 @@ namespace BeroxAppy.Services
         {
             if (summary.IsClosed) return; // Kapalı günler güncellenmez
 
+            // Güncel hesaplamaları yap
             await CalculateDailySummaryAsync(summary);
             await _dailySummaryRepository.UpdateAsync(summary);
         }
@@ -329,36 +338,64 @@ namespace BeroxAppy.Services
         {
             var date = summary.Date;
 
-            // GELİRLER
+            // GELİRLER - İade edilmeyenler
             var payments = await _paymentRepository.GetListAsync(x =>
                 x.PaymentDate.Date == date && !x.IsRefund);
 
-            summary.ServiceIncome = payments.Where(x => x.ReservationId.HasValue).Sum(x => x.Amount);
-            summary.ProductIncome = 0; // İleride ürün satışları için
+            // İADELER - Ayrı hesapla
+            var refunds = await _paymentRepository.GetListAsync(x =>
+                x.PaymentDate.Date == date && x.IsRefund);
+
+            // Net hizmet geliri (gelir - iade)
+            var grossServiceIncome = payments.Where(x => x.ReservationId.HasValue).Sum(x => x.Amount);
+            var serviceRefunds = refunds.Where(x => x.ReservationId.HasValue).Sum(x => x.Amount);
+            summary.ServiceIncome = Math.Max(0, grossServiceIncome - serviceRefunds);
+
+            // Diğer gelirler (rezervasyon dışı ödemeler)
+            var otherIncomePayments = payments.Where(x => !x.ReservationId.HasValue).Sum(x => x.Amount);
+            var otherRefunds = refunds.Where(x => !x.ReservationId.HasValue).Sum(x => x.Amount);
+            summary.OtherIncome = Math.Max(0, otherIncomePayments - otherRefunds);
+
+            // Ürün gelirleri (şimdilik 0, ileride ürün satışları için)
+            summary.ProductIncome = 0;
+
+            // Toplam gelir
             summary.TotalIncome = summary.ServiceIncome + summary.ProductIncome + summary.OtherIncome;
 
             // GİDERLER
             var employeePayments = await _employeePaymentRepository.GetListAsync(x =>
                 x.PaymentDate.Date == date);
             summary.EmployeePayments = employeePayments.Sum(x => x.TotalAmount);
+
+            // Diğer giderler ve operasyonel giderler şimdilik aynı (manuel girişse 0 kalır)
+            // İleride ayrı gider tablosu eklerseniz buraya ekleyebilirsiniz
             summary.TotalExpenses = summary.EmployeePayments + summary.OperationalExpenses + summary.OtherExpenses;
 
-            // NET KAR
+            // NET KAR/ZARAR
             summary.NetProfit = summary.TotalIncome - summary.TotalExpenses;
 
-            // ÖDEME YÖNTEMLERİ
-            summary.CashAmount = payments.Where(x => x.PaymentMethod == PaymentMethod.Cash).Sum(x => x.Amount);
-            summary.CreditCardAmount = payments.Where(x => x.PaymentMethod == PaymentMethod.CreditCard).Sum(x => x.Amount);
-            summary.DebitCardAmount = payments.Where(x => x.PaymentMethod == PaymentMethod.DebitCard).Sum(x => x.Amount);
-            summary.BankTransferAmount = payments.Where(x => x.PaymentMethod == PaymentMethod.BankTransfer).Sum(x => x.Amount);
+            // ÖDEME YÖNTEMLERİ DAĞILIMI (sadece net ödemeler, iadeler düşülmüş)
+            var allNetPayments = payments.Concat(refunds.Select(r => new Payment
+            {
+                PaymentMethod = r.PaymentMethod,
+                Amount = -r.Amount // İadeleri negatif yap
+            }));
+
+            summary.CashAmount = allNetPayments.Where(x => x.PaymentMethod == PaymentMethod.Cash).Sum(x => x.Amount);
+            summary.CreditCardAmount = allNetPayments.Where(x => x.PaymentMethod == PaymentMethod.CreditCard).Sum(x => x.Amount);
+            summary.DebitCardAmount = allNetPayments.Where(x => x.PaymentMethod == PaymentMethod.DebitCard).Sum(x => x.Amount);
+            summary.BankTransferAmount = allNetPayments.Where(x => x.PaymentMethod == PaymentMethod.BankTransfer).Sum(x => x.Amount);
 
             // İSTATİSTİKLER
             var reservations = await _reservationRepository.GetListAsync(x => x.ReservationDate.Date == date);
             summary.TotalReservations = reservations.Count;
             summary.CompletedReservations = reservations.Count(x => x.Status == ReservationStatus.Arrived);
             summary.CancelledReservations = reservations.Count(x => x.Status == ReservationStatus.NoShow);
-            summary.AverageTicketSize = summary.CompletedReservations > 0 ?
-                summary.ServiceIncome / summary.CompletedReservations : 0;
+
+            // Ortalama işlem tutarı (tamamlanan rezervasyonlara göre)
+            summary.AverageTicketSize = summary.CompletedReservations > 0
+                ? summary.ServiceIncome / summary.CompletedReservations
+                : 0;
         }
 
     }

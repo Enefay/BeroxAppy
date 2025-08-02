@@ -89,5 +89,23 @@ namespace BeroxAppy.Employees
 
         [Display(Name = "Kullanıcı Durumu")]
         public string UserStatus { get; set; } // "Aktif", "Pasif", "Kullanıcı Yok"
+
+        [Display(Name = "Cari Dönem Komisyonu")]
+        public decimal CurrentPeriodCommission { get; set; }
+
+        [Display(Name = "Son Komisyon Sıfırlama Tarihi")]
+        public DateTime LastCommissionResetDate { get; set; }
+
+        [Display(Name = "Son Maaş Ödeme Tarihi")]
+        public DateTime? LastSalaryPaymentDate { get; set; }
+
+        [Display(Name = "Ödeme Günü")]
+        public int PaymentDay { get; set; }
+
+        [Display(Name = "Tercih Edilen Ödeme Yöntemi")]
+        public PaymentMethod PreferredPaymentMethod { get; set; }
+
+        [Display(Name = "Maaş Dönemi")]
+        public SalaryPeriodType SalaryPeriod { get; set; }
     }
 }

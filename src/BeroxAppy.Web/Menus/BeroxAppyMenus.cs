@@ -6,6 +6,7 @@ public class BeroxAppyMenus
     public const string Home = Prefix + ".Home";
     public const string Reservations = Prefix + ".Reservations";
     public const string WalkIns = Prefix + ".WalkIns";
+    public const string Commission = Prefix + ".Commission";
 
     //Add your menu items here...
 

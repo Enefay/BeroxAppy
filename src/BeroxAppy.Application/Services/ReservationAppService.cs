@@ -8,6 +8,7 @@ using BeroxAppy.Enums;
 using BeroxAppy.Finance;
 using BeroxAppy.Finances;
 using BeroxAppy.Services;
+using Microsoft.VisualBasic;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -26,6 +27,7 @@ namespace BeroxAppy.Reservations
         private readonly IRepository<EmployeeWorkingHours, Guid> _workingHoursRepository;
         private readonly IRepository<EmployeeCommission, Guid> _commissionRepository;
         private readonly IPaymentAppService _paymentAppService;
+        private readonly IFinanceAppService _financeAppService;
 
         public ReservationAppService(
             IRepository<Reservation, Guid> reservationRepository,
@@ -35,7 +37,8 @@ namespace BeroxAppy.Reservations
             IRepository<Service, Guid> serviceRepository,
             IRepository<EmployeeWorkingHours, Guid> workingHoursRepository,
             IPaymentAppService paymentAppService,
-            IRepository<EmployeeCommission, Guid> commissionRepository)
+            IRepository<EmployeeCommission, Guid> commissionRepository,
+            IFinanceAppService financeAppService)
         {
             _reservationRepository = reservationRepository;
             _reservationDetailRepository = reservationDetailRepository;
@@ -45,6 +48,7 @@ namespace BeroxAppy.Reservations
             _workingHoursRepository = workingHoursRepository;
             _paymentAppService = paymentAppService;
             _commissionRepository = commissionRepository;
+            _financeAppService = financeAppService;
         }
 
         // =============== TEMEL CRUD ===============
@@ -1206,15 +1210,32 @@ namespace BeroxAppy.Reservations
                 await ProcessCommissionsAsync(input.ReservationId);
 
 
+                // 11.Günlük finansal özeti güncelle***
+                await UpdateDailyFinancialSummaryAsync(reservation.ReservationDate);
+
                 await uow.CompleteAsync();
 
-                // 10. Güncellenmiş DTO'yu döndür
                 return await GetAsync(input.ReservationId);
             }
             catch (Exception)
             {
                 await uow.RollbackAsync();
                 throw;
+            }
+        }
+
+
+        // Günlük finansal özeti güncelle
+        private async Task UpdateDailyFinancialSummaryAsync(DateTime reservationDate)
+        {
+            try
+            {
+                // Rezervasyon tarihine göre günlük özeti getir veya oluştur
+                await _financeAppService.GetOrCreateDailySummaryAsync(reservationDate);
+            }
+            catch (Exception ex)
+            {
+                // Log hata ama işlemi durdurmama
             }
         }
 

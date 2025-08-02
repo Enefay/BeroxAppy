@@ -7,6 +7,7 @@ using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using BeroxAppy.Customers;
 using System.Collections.Generic;
 using Volo.Abp.ObjectMapping;
+using BeroxAppy.Finances;
 
 namespace BeroxAppy.Web.Pages.Employees
 {
@@ -46,7 +47,10 @@ namespace BeroxAppy.Web.Pages.Employees
                     ServiceCommissionRate = employeeDto.ServiceCommissionRate,
                     ProductCommissionRate = employeeDto.ProductCommissionRate,
                     PackageCommissionRate = employeeDto.PackageCommissionRate,
-                    IsActive = employeeDto.IsActive
+                    IsActive = employeeDto.IsActive,
+                    PaymentDay= employeeDto.PaymentDay,
+                    PreferredPaymentMethod = employeeDto.PreferredPaymentMethod,
+                    SalaryPeriod = employeeDto.SalaryPeriod
                 };
             }
             else
@@ -61,7 +65,13 @@ namespace BeroxAppy.Web.Pages.Employees
                     ServiceCommissionRate = 0,
                     ProductCommissionRate = 0,
                     PackageCommissionRate = 0,
-                    IsActive = true
+                    IsActive = true,
+                    CurrentPeriodCommission = 0,
+                    LastCommissionResetDate = DateTime.Now,
+                    LastSalaryPaymentDate = null,
+                    PaymentDay = 1,
+                    PreferredPaymentMethod = PaymentMethod.Cash,
+                    SalaryPeriod = SalaryPeriodType.Monthly
                 };
             }
         }

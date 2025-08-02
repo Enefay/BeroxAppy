@@ -1,0 +1,767 @@
+﻿@page
+@model BeroxAppy.Web.Pages.Finance.IndexModel
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<BeroxAppyResource> L
+@{
+    ViewData["Title"] = "Finansal Dashboard";
+}
+
+@section styles {
+    <style>
+        .dashboard-card {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+            .dashboard-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+
+        .income-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .expense-card {
+            background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+        }
+
+        .profit-card {
+            background: linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%);
+        }
+
+        .cash-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .commission-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .metric-icon {
+            font-size: 2.5rem;
+            opacity: 0.8;
+        }
+
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .btn-action {
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 4px 12px;
+            border-radius: 15px;
+        }
+
+        .payment-method-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .quick-actions {
+            position: sticky;
+            top: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+    </style>
+}
+
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">
+                    <i class="fas fa-chart-line"></i> Finansal Dashboard
+                </h1>
+            </div>
+            <div class="col-sm-6">
+                <div class="float-right">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Yenile
+                    </button>
+                    <div class="btn-group ml-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown">
+                            <i class="fas fa-calendar"></i> @Model.SelectedDate.ToString("dd.MM.yyyy")
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="javascript:void(0)" onclick="changeDate('today')">Bugün</a>
+                            <a class="dropdown-item" href="javascript:void(0)" onclick="changeDate('yesterday')">Dün</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="javascript:void(0)" onclick="showDatePicker()">Özel Tarih</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="content">
+    <div class="container-fluid">
+
+        <!-- Genel Metrikler -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="dashboard-card metric-card income-card p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-white-50 mb-1">Günlük Gelir</h6>
+                            <h3 class="mb-0">₺@Model.DashboardData.TodayIncome.ToString("N2")</h3>
+                        </div>
+                        <div class="metric-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="dashboard-card metric-card expense-card p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-white-50 mb-1">Günlük Gider</h6>
+                            <h3 class="mb-0">₺@Model.DashboardData.TodayExpenses.ToString("N2")</h3>
+                        </div>
+                        <div class="metric-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="dashboard-card metric-card profit-card p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-white-50 mb-1">Net Kar</h6>
+                            <h3 class="mb-0">₺@Model.DashboardData.TodayProfit.ToString("N2")</h3>
+                        </div>
+                        <div class="metric-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="dashboard-card metric-card commission-card p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-white-50 mb-1">Bekleyen Komisyon</h6>
+                            <h3 class="mb-0">₺@Model.DashboardData.PendingCommissions.ToString("N2")</h3>
+                        </div>
+                        <div class="metric-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sol Kolon -->
+            <div class="col-lg-8">
+
+                <!-- Kasa Durumu -->
+                <div class="card dashboard-card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cash-register"></i> Günlük Kasa Durumu
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CashRegister != null)
+                        {
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h6 class="text-muted">Açılış Bakiyesi</h6>
+                                        <h4 class="text-info">₺@Model.CashRegister.OpeningBalance.ToString("N2")</h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h6 class="text-muted">Nakit Giriş</h6>
+                                        <h4 class="text-success">₺@Model.CashRegister.TotalCashIn.ToString("N2")</h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h6 class="text-muted">Nakit Çıkış</h6>
+                                        <h4 class="text-danger">₺@Model.CashRegister.TotalCashOut.ToString("N2")</h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h6 class="text-muted">Teorik Bakiye</h6>
+                                        <h4 class="text-primary">₺@Model.CashRegister.TheoreticalBalance.ToString("N2")</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="status-badge @(Model.CashRegister.IsClosed ? "bg-secondary text-white" : "bg-success text-white")">
+                                        @(Model.CashRegister.IsClosed ? "Kapatıldı" : "Açık")
+                                    </span>
+                                </div>
+                                <div>
+                                    @if (!Model.CashRegister.IsClosed)
+                                    {
+                                        <button type="button" class="btn btn-warning btn-sm btn-action" onclick="closeCashRegister()">
+                                            <i class="fas fa-lock"></i> Kasayı Kapat
+                                        </button>
+                                    }
+                                    <button type="button" class="btn btn-info btn-sm btn-action" onclick="viewCashDetails()">
+                                        <i class="fas fa-eye"></i> Detaylar
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-cash-register fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Bugün için kasa kaydı bulunamadı.</p>
+                                <button type="button" class="btn btn-primary btn-action" onclick="createCashRegister()">
+                                    <i class="fas fa-plus"></i> Kasayı Aç
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Ödeme Yöntemleri Dağılımı -->
+                @if (Model.DailySummary != null)
+                {
+                    <div class="card dashboard-card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-credit-card"></i> Ödeme Yöntemleri Dağılımı
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <canvas id="paymentMethodsChart"></canvas>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="row">
+                                        <div class="col-6 mb-3">
+                                            <div class="text-center">
+                                                <span class="payment-method-badge bg-success text-white">Nakit</span>
+                                                <h5 class="mt-2 mb-0">₺@Model.DailySummary.CashAmount.ToString("N2")</h5>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <div class="text-center">
+                                                <span class="payment-method-badge bg-primary text-white">Kredi Kartı</span>
+                                                <h5 class="mt-2 mb-0">₺@Model.DailySummary.CreditCardAmount.ToString("N2")</h5>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <div class="text-center">
+                                                <span class="payment-method-badge bg-info text-white">Banka Kartı</span>
+                                                <h5 class="mt-2 mb-0">₺@Model.DailySummary.DebitCardAmount.ToString("N2")</h5>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <div class="text-center">
+                                                <span class="payment-method-badge bg-warning text-dark">Havale/EFT</span>
+                                                <h5 class="mt-2 mb-0">₺@Model.DailySummary.BankTransferAmount.ToString("N2")</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Bugünkü Rezervasyonlar -->
+                <div class="card dashboard-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-day"></i> Bugünkü Rezervasyonlar (@Model.TodayReservations.Count)
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (Model.TodayReservations.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Saat</th>
+                                            <th>Müşteri</th>
+                                            <th>Hizmetler</th>
+                                            <th>Tutar</th>
+                                            <th>Durum</th>
+                                            <th>Ödeme</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var reservation in Model.TodayReservations.OrderBy(r => r.StartTime))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@reservation.ReservationTimeDisplay</strong>
+                                                    @if (reservation.IsWalkIn)
+                                                    {
+                                                        <span class="badge badge-secondary badge-sm ml-1">Adisyon</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        <strong>@reservation.CustomerName</strong>
+                                                        <br><small class="text-muted">@reservation.CustomerPhone</small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <small>
+                                                        @string.Join(", ", reservation.ReservationDetails.Select(d => d.ServiceTitle))
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <strong>₺@reservation.FinalPrice.ToString("N2")</strong>
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge @GetStatusBadgeClass(reservation.Status)">
+                                                        @reservation.StatusDisplay
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge @GetPaymentStatusBadgeClass(reservation.PaymentStatus)">
+                                                        @reservation.PaymentStatusDisplay
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                                                onclick="viewReservation('@reservation.Id')">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        @if (reservation.Status == BeroxAppy.Enums.ReservationStatus.Pending)
+                                                        {
+                                                            <button type="button" class="btn btn-outline-success btn-sm"
+                                                                    onclick="completeReservation('@reservation.Id')">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Bugün için rezervasyon bulunmuyor.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sağ Kolon - Hızlı İşlemler -->
+            <div class="col-lg-4">
+                <div class="quick-actions">
+
+                    <!-- Hızlı İşlemler -->
+                    <div class="card dashboard-card mb-4">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bolt"></i> Hızlı İşlemler
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-success btn-action" onclick="createWalkIn()">
+                                    <i class="fas fa-plus"></i> Adisyon Oluştur
+                                </button>
+                                <button type="button" class="btn btn-primary btn-action" onclick="createReservation()">
+                                    <i class="fas fa-calendar-plus"></i> Rezervasyon Oluştur
+                                </button>
+                                <button type="button" class="btn btn-info btn-action" onclick="recordPayment()">
+                                    <i class="fas fa-money-bill"></i> Ödeme Kaydet
+                                </button>
+                                <button type="button" class="btn btn-warning btn-action" onclick="payCommissions()">
+                                    <i class="fas fa-hand-holding-usd"></i> Komisyon Öde
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-action" onclick="viewReports()">
+                                    <i class="fas fa-chart-bar"></i> Raporlar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bekleyen Komisyonlar -->
+                    <div class="card dashboard-card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users"></i> Bekleyen Komisyonlar
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            @if (Model.DashboardData.EmployeeCommissions.Any())
+                            {
+                                <div class="list-group list-group-flush">
+                                    @foreach (var commission in Model.DashboardData.EmployeeCommissions.Take(5))
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>@commission.EmployeeName</strong>
+                                                @if (commission.LastPaymentDate.HasValue)
+                                                {
+                                                    <br>
+
+                                                    <small class="text-muted">Son ödeme: @commission.LastPaymentDate.Value.ToString("dd.MM.yyyy")</small>
+                                                }
+                                            </div>
+                                            <div class="text-right">
+                                                <strong class="text-primary">₺@commission.CurrentCommission.ToString("N2")</strong>
+                                                @if (commission.CanPay)
+                                                {
+                                                    <br>
+                                                    <button type="button" class="btn btn-outline-primary btn-xs"
+                                                            onclick="payEmployeeCommission('@commission.EmployeeId')">
+                                                        <i class="fas fa-hand-holding-usd"></i> Öde
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                @if (Model.DashboardData.EmployeeCommissions.Count > 5)
+                                {
+                                    <div class="card-footer text-center">
+                                        <a href="/Finance/Commissions" class="btn btn-sm btn-outline-info">
+                                            +@(Model.DashboardData.EmployeeCommissions.Count - 5) daha... Tümünü Gör
+                                        </a>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                    <p class="text-muted mb-0">Bekleyen komisyon yok</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Günlük İstatistikler -->
+                    @if (Model.DailySummary != null)
+                    {
+                        <div class="card dashboard-card">
+                            <div class="card-header bg-purple text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-pie"></i> Günlük İstatistikler
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6 mb-3">
+                                        <h6 class="text-muted">Toplam Rezervasyon</h6>
+                                        <h4 class="text-primary">@Model.DailySummary.TotalReservations</h4>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <h6 class="text-muted">Tamamlanan</h6>
+                                        <h4 class="text-success">@Model.DailySummary.CompletedReservations</h4>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <h6 class="text-muted">İplat Edilen</h6>
+                                        <h4 class="text-danger">@Model.DailySummary.CancelledReservations</h4>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <h6 class="text-muted">Ort. İşlem</h6>
+                                        <h4 class="text-info">₺@Model.DailySummary.AverageTicketSize.ToString("N0")</h4>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <h6 class="text-muted">Kar Marjı</h6>
+                                    <h3 class="@(Model.DailySummary.ProfitMargin >= 0 ? "text-success" : "text-danger")">
+                                        %@Model.DailySummary.ProfitMargin.ToString("N1")
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Kasa Kapatma Modal -->
+<div class="modal fade" id="closeCashModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kasayı Kapat</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="closeCashForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Teorik Bakiye</label>
+                        <input type="text" class="form-control" id="theoreticalBalance" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Fiili Bakiye *</label>
+                        <input type="number" class="form-control" id="actualBalance" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Not</label>
+                        <textarea class="form-control" id="cashNote" rows="3"></textarea>
+                    </div>
+                    <div id="balanceDifference" class="alert" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning">Kasayı Kapat</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/lib/chart.js/chart.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            initializeCharts();
+            initializeEventHandlers();
+        });
+
+        function initializeCharts() {
+            // Ödeme yöntemleri chart
+        @if (Model.DailySummary != null)
+        {
+            <text>
+                    var ctx = document.getElementById('paymentMethodsChart').getContext('2d');
+                    var paymentChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Nakit', 'Kredi Kartı', 'Banka Kartı', 'Havale/EFT'],
+                            datasets: [{
+                                data: [
+                @Model.DailySummary.CashAmount,
+                @Model.DailySummary.CreditCardAmount,
+                @Model.DailySummary.DebitCardAmount,
+                @Model.DailySummary.BankTransferAmount
+                                ],
+                                backgroundColor: [
+                                    '#28a745',
+                                    '#007bff',
+                                    '#17a2b8',
+                                    '#ffc107'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            legend: {
+                                display: false
+                            }
+                        }
+                    });
+            </text>
+        }
+        }
+
+        function initializeEventHandlers() {
+            // Fiili bakiye değiştiğinde fark hesapla
+            $('#actualBalance').on('input', function () {
+                var theoretical = parseFloat($('#theoreticalBalance').val()) || 0;
+                var actual = parseFloat($(this).val()) || 0;
+                var difference = actual - theoretical;
+
+                var diffElement = $('#balanceDifference');
+                if (Math.abs(difference) > 0.01) {
+                    diffElement.show();
+                    if (difference > 0) {
+                        diffElement.removeClass('alert-danger').addClass('alert-success');
+                        diffElement.text('Fazla: ₺' + difference.toFixed(2));
+                    } else {
+                        diffElement.removeClass('alert-success').addClass('alert-danger');
+                        diffElement.text('Eksik: ₺' + Math.abs(difference).toFixed(2));
+                    }
+                } else {
+                    diffElement.hide();
+                }
+            });
+
+            // Kasa kapatma form
+            $('#closeCashForm').submit(function (e) {
+                e.preventDefault();
+                submitCloseCash();
+            });
+        }
+
+        function refreshDashboard() {
+            location.reload();
+        }
+
+        function changeDate(period) {
+            var date = new Date();
+            if (period === 'yesterday') {
+                date.setDate(date.getDate() - 1);
+            }
+
+            var dateStr = date.toISOString().split('T')[0];
+            window.location.href = '?date=' + dateStr;
+        }
+
+        function showDatePicker() {
+            var date = prompt('Tarih (GG.AA.YYYY):', '@Model.SelectedDate.ToString("dd.MM.yyyy")');
+            if (date) {
+                // Tarih formatını dönüştür
+                var parts = date.split('.');
+                if (parts.length === 3) {
+                    var dateStr = parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
+                    window.location.href = '?date=' + dateStr;
+                }
+            }
+        }
+
+        function closeCashRegister() {
+        @if (Model.CashRegister != null)
+        {
+            <text>
+                    $('#theoreticalBalance').val('@Model.CashRegister.TheoreticalBalance.ToString("F2")');
+                    $('#actualBalance').val('@Model.CashRegister.TheoreticalBalance.ToString("F2")');
+                    $('#closeCashModal').modal('show');
+            </text>
+        }
+        }
+
+        function submitCloseCash() {
+            var actualBalance = parseFloat($('#actualBalance').val());
+            var note = $('#cashNote').val();
+
+            $.post('/Finance/CloseCashRegister', {
+                cashRegisterId: '@(Model.CashRegister?.Id ?? Guid.Empty)',
+                actualClosingBalance: actualBalance,
+                note: note
+            })
+            .done(function(data) {
+                if (data.success) {
+                    toastr.success('Kasa başarıyla kapatıldı!');
+                    $('#closeCashModal').modal('hide');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    toastr.error(data.message || 'Bir hata oluştu!');
+                }
+            })
+            .fail(function() {
+                toastr.error('Kasa kapatılırken bir hata oluştu!');
+            });
+        }
+
+        function viewCashDetails() {
+            window.location.href = '/Finance/CashRegister';
+        }
+
+        function createCashRegister() {
+            $.post('/Finance/CreateCashRegister')
+            .done(function(data) {
+                if (data.success) {
+                    toastr.success('Kasa başarıyla açıldı!');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    toastr.error(data.message || 'Bir hata oluştu!');
+                }
+            })
+            .fail(function() {
+                toastr.error('Kasa açılırken bir hata oluştu!');
+            });
+        }
+
+        function createWalkIn() {
+            window.location.href = '/Reservations/Create?isWalkIn=true';
+        }
+
+        function createReservation() {
+            window.location.href = '/Reservations/Create';
+        }
+
+        function recordPayment() {
+            window.location.href = '/Payments/Create';
+        }
+
+        function payCommissions() {
+            window.location.href = '/Finance/Commissions';
+        }
+
+        function viewReports() {
+            window.location.href = '/Finance/Reports';
+        }
+
+        function viewReservation(id) {
+            window.location.href = '/Reservations/Details/' + id;
+        }
+
+        function completeReservation(id) {
+            window.location.href = '/Reservations/Complete/' + id;
+        }
+
+        function payEmployeeCommission(employeeId) {
+            window.location.href = '/Finance/PayCommission?employeeId=' + employeeId;
+        }
+    </script>
+}
+
+@functions {
+    public string GetStatusBadgeClass(BeroxAppy.Enums.ReservationStatus status)
+    {
+        return status switch
+        {
+            BeroxAppy.Enums.ReservationStatus.Pending => "bg-warning text-dark",
+            BeroxAppy.Enums.ReservationStatus.Arrived => "bg-success text-white",
+            BeroxAppy.Enums.ReservationStatus.NoShow => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+
+    public string GetPaymentStatusBadgeClass(BeroxAppy.Enums.PaymentStatus status)
+    {
+        return status switch
+        {
+            BeroxAppy.Enums.PaymentStatus.Pending => "bg-danger text-white",
+            BeroxAppy.Enums.PaymentStatus.Partial => "bg-warning text-dark",
+            BeroxAppy.Enums.PaymentStatus.Paid => "bg-success text-white",
+            BeroxAppy.Enums.PaymentStatus.Refunded => "bg-info text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+}
