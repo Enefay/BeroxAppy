@@ -8,6 +8,7 @@ using BeroxAppy.Finance;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using BeroxAppy.Enums;
 using BeroxAppy.Finances;
+using BeroxAppy.Customers;
 
 namespace BeroxAppy.Web.Pages.Reservations
 {
@@ -15,6 +16,7 @@ namespace BeroxAppy.Web.Pages.Reservations
     {
         private readonly IReservationAppService _reservationAppService;
         private readonly IPaymentAppService _paymentAppService;
+        private readonly ICustomerAppService _customerAppService; 
 
         public ReservationDto Reservation { get; set; }
         public decimal PaidAmount { get; set; }
@@ -25,10 +27,12 @@ namespace BeroxAppy.Web.Pages.Reservations
 
         public CompleteReservationModalModel(
             IReservationAppService reservationAppService,
-            IPaymentAppService paymentAppService)
+            IPaymentAppService paymentAppService,
+            ICustomerAppService customerAppService)
         {
             _reservationAppService = reservationAppService;
             _paymentAppService = paymentAppService;
+            _customerAppService = customerAppService;
         }
 
         public async Task<IActionResult> OnGetAsync(Guid id)
@@ -36,15 +40,14 @@ namespace BeroxAppy.Web.Pages.Reservations
             ReservationId = id;
             Reservation = await _reservationAppService.GetAsync(id);
 
-            System.Diagnostics.Debug.WriteLine($"DiscountAmount: {Reservation.DiscountAmount}");
-            System.Diagnostics.Debug.WriteLine($"ExtraAmount: {Reservation.ExtraAmount}");
+            // Müþteri indirim oranýný al - DÜZELTÝLDÝ
+            var customer = await _customerAppService.GetAsync(Reservation.CustomerId);
+            CustomerDiscountRate = customer.DiscountRate;
+
 
             // Ödeme bilgilerini al
             PaidAmount = await _paymentAppService.GetReservationPaidAmountAsync(id);
             RemainingAmount = await _paymentAppService.GetReservationRemainingAmountAsync(id);
-
-            // Müþteri indirim oranýný al (Customer service'den alýnabilir)
-            CustomerDiscountRate = 0; // TODO: Customer service'den al
 
             // Mevcut ödemeleri al
             var paymentsResult = await _paymentAppService.GetReservationPaymentsAsync(id);

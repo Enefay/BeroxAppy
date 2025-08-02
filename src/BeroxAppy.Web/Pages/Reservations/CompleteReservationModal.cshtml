@@ -53,7 +53,7 @@
                                     <th>Hizmet</th>
                                     <th>Çalışan</th>
                                     <th>Süre</th>
-                                    <th>Fiyat</th>
+                                    <th>Fiyat (₺)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -64,13 +64,13 @@
                                         <td>@detail.EmployeeName</td>
                                         <td>@detail.DurationDisplay</td>
                                         <td>
-                                            ₺@detail.ServicePrice.ToString("N2")
-                                            <input type="hidden"
-                                                   class="service-price-input"
-                                                   value="@detail.ServicePrice.ToString("N2")"
-                                                   data-detail-id="@detail.Id" />
+                                            <input type="number"
+                                                   class="form-control form-control-sm service-price-input"
+                                                   value="@detail.ServicePrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                   data-detail-id="@detail.Id"
+                                                   data-original-price="@detail.ServicePrice"
+                                                   min="0" step="0.01" style="width: 100px; display: inline-block;" />
                                         </td>
-
                                     </tr>
                                 }
                             </tbody>
@@ -135,7 +135,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Ödeme Tutarı (₺) <span class="text-danger">*</span></label>
                                 <input type="number" id="paymentAmount" class="form-control"
@@ -144,7 +144,7 @@
                                 <div class="form-text">Kalan tutar: ₺<span id="remainingAmount">@Model.RemainingAmount.ToString("N2")</span></div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Ödeme Yöntemi <span class="text-danger">*</span></label>
                                 <select id="paymentMethod" class="form-select" required>
@@ -158,15 +158,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label class="form-label">Ödeme Durumu</label>
-                                <select id="paymentStatus" class="form-select">
-                                    <option value="1">Kısmi Ödeme</option>
-                                    <option value="2" selected>Tam Ödeme</option>
-                                </select>
-                            </div>
-                        </div>
+                     
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Ödeme Notu</label>
@@ -231,15 +223,10 @@
     $(function() {
         // Global değişkenler
         let originalServiceTotal = 0;
-        let originalDiscountAmount = 0;
-        let originalExtraAmount = 0;
 
         // Sayfa yüklendiğinde değerleri al
         function initializeValues() {
             originalServiceTotal = parseFloat('@Model.Reservation.TotalServicePrice') || 0;
-            originalDiscountAmount = parseFloat('@((Model.Reservation.DiscountAmount ?? 0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))') || 0;
-            originalExtraAmount = parseFloat('@((Model.Reservation.ExtraAmount ?? 0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))') || 0;
-
             calculateTotals();
         }
 
@@ -329,10 +316,15 @@
             $('.service-price-input').each(function() {
                 const detailId = $(this).data('detail-id');
                 const newPrice = parseFloat($(this).val()) || 0;
-                serviceChanges.push({
-                    reservationDetailId: detailId,
-                    newPrice: newPrice
-                });
+                const originalPrice = parseFloat($(this).data('original-price')) || 0;
+
+                // Sadece değişen fiyatları gönder
+                if (Math.abs(newPrice - originalPrice) > 0.01) {
+                    serviceChanges.push({
+                        reservationDetailId: detailId,
+                        newPrice: newPrice
+                    });
+                }
             });
 
             const data = {
@@ -345,8 +337,6 @@
                 paymentNote: $('#paymentNote').val() || null
             };
 
-            console.log('Gönderilen data:', data); // Debug için
-
             abp.ui.setBusy('.modal-content');
 
             $.ajax({
@@ -355,13 +345,10 @@
                 contentType: 'application/json',
                 data: JSON.stringify(data),
                 success: function(result) {
-
-
-                                            abp.event.trigger('app.reservation.saved', result);
+                abp.event.trigger('app.reservation.saved', result);
                    
                 },
                 error: function(xhr) {
-                    console.error('Hata detayı:', xhr); // Debug için
                     const error = xhr.responseJSON?.error?.message || 'Bir hata oluştu!';
                     abp.notify.error(error);
                 },

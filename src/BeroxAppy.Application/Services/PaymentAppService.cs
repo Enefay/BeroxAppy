@@ -114,7 +114,7 @@ namespace BeroxAppy.Services
             }
 
             // Müşteri borcunu güncelle
-            await UpdateCustomerDebtAsync(input.CustomerId, input.Amount, !input.IsRefund);
+            await UpdateCustomerDebtAsync(input.CustomerId, input.Amount, true);
 
             return await MapToPaymentDtoAsync(payment);
         }
@@ -176,30 +176,47 @@ namespace BeroxAppy.Services
 
         public async Task<PaymentDto> CreateReservationPaymentAsync(CreateReservationPaymentDto input)
         {
+
+            // 1. Rezervasyon validation
             var reservation = await _reservationRepository.GetAsync(input.ReservationId);
 
-            // Ödeme tutarı kontrolü
-            var paidAmount = await GetReservationPaidAmountAsync(input.ReservationId);
-            var remainingAmount = reservation.FinalPrice - paidAmount;
-
-            if (input.Amount > remainingAmount)
+            if (reservation.Status == ReservationStatus.NoShow)
             {
-                throw new UserFriendlyException($"Ödeme tutarı kalan borçtan ({remainingAmount:C}) fazla olamaz.");
+                throw new UserFriendlyException("Gelmedi olarak işaretlenmiş rezervasyona ödeme yapılamaz!");
+            }
+
+            // 2. Ödeme tutarı kontrolü 
+            var currentPaidAmount = await GetReservationPaidAmountAsync(input.ReservationId);
+            var remainingAmount = reservation.FinalPrice - currentPaidAmount;
+
+            if (input.Amount > remainingAmount + 0.01m)
+            {
+                throw new UserFriendlyException($"Ödeme tutarı kalan borçtan ({remainingAmount:C}) fazla olamaz!");
+            }
+
+            if (input.Amount <= 0)
+            {
+                throw new UserFriendlyException("Ödeme tutarı sıfırdan büyük olmalıdır!");
             }
 
             Guid? cashRegisterId = input.CashRegisterId; 
 
             if (input.PaymentMethod == PaymentMethod.Cash)
             {
-                // Günlük kasa kaydını bul veya oluştur
                 var todaysCashRegister = await GetOrCreateTodaysCashRegisterAsync();
                 cashRegisterId = todaysCashRegister.Id;
 
-                // Kasa bakiyesini güncelle (ödeme = cash in)
+                // Kasa kapanmış mı kontrol et
+                if (todaysCashRegister.IsClosed)
+                {
+                    throw new UserFriendlyException("Günlük kasa kapatılmış! Nakit ödeme yapılamaz.");
+                }
+                // Kasa bakiyesini güncelle
                 todaysCashRegister.TotalCashIn += input.Amount;
                 await _cashRegisterRepository.UpdateAsync(todaysCashRegister);
             }
 
+            // 4. Payment entity oluştur
             var payment = new Payment
             {
                 CustomerId = reservation.CustomerId,
@@ -207,12 +224,15 @@ namespace BeroxAppy.Services
                 Amount = input.Amount,
                 PaymentMethod = input.PaymentMethod,
                 PaymentDate = DateTime.Now,
-                Description = input.Description ?? $"Rezervasyon ödemesi - {reservation.ReservationDate:dd.MM.yyyy}",
+                Description = string.IsNullOrWhiteSpace(input.Description)
+                    ? $"Rezervasyon ödemesi - {reservation.ReservationDate:dd.MM.yyyy}"
+                    : input.Description,
                 IsRefund = false,
                 CashRegisterId = cashRegisterId
             };
-
             await _paymentRepository.InsertAsync(payment);
+
+
 
             // Rezervasyon durumlarını güncelle
             await UpdateReservationPaymentStatusAsync(input.ReservationId);
@@ -229,7 +249,8 @@ namespace BeroxAppy.Services
             }
 
             // Müşteri borcunu güncelle (borcu azalt)
-            await UpdateCustomerDebtAsync(reservation.CustomerId, input.Amount, false);
+            bool borcKontrol = (reservation.FinalPrice - input.Amount) == 0;
+            await UpdateCustomerDebtAsync(reservation.CustomerId, input.Amount, borcKontrol);
 
             return await MapToPaymentDtoAsync(payment);
         }
@@ -428,7 +449,7 @@ namespace BeroxAppy.Services
             }
         }
 
-        private async Task UpdateCustomerDebtAsync(Guid customerId, decimal amount, bool isDecrease)
+        private async Task UpdateCustomerDebtAsync(Guid customerId, decimal amount, bool isDecrease) //azalma mi
         {
             var customer = await _customerRepository.GetAsync(customerId);
 

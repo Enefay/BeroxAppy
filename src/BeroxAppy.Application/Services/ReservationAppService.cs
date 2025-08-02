@@ -1071,14 +1071,29 @@ namespace BeroxAppy.Reservations
 
             try
             {
+                // 1. Rezervasyonu al
                 var reservation = await _reservationRepository.GetAsync(input.ReservationId);
 
-                // 1. Hizmet fiyat değişikliklerini uygula
+
+                // 2. Rezervasyon zaten tamamlanmış mı kontrol et
+                if (reservation.Status == ReservationStatus.Arrived)
+                {
+                    throw new UserFriendlyException("Bu rezervasyon zaten tamamlanmış!");
+                }
+
+                // 3. Hizmet fiyat değişikliklerini uygula
+                bool servicesPriceChanged = false;
                 if (input.ServiceChanges?.Any() == true)
                 {
                     foreach (var change in input.ServiceChanges)
                     {
                         var detail = await _reservationDetailRepository.GetAsync(change.ReservationDetailId);
+                        
+                        // Fiyat kontrolü
+                        if (change.NewPrice < 0)
+                        {
+                            throw new UserFriendlyException("Hizmet fiyatı 0'dan küçük olamaz!");
+                        }
 
                         if (Math.Abs(detail.ServicePrice - change.NewPrice) > 0.01m) // Fiyat değişmişse
                         {
@@ -1087,38 +1102,103 @@ namespace BeroxAppy.Reservations
                             // Komisyon yeniden hesapla
                             detail.CommissionAmount = detail.ServicePrice * detail.CommissionRate / 100;
 
+                            // Komisyon yeniden hesapla
+                            var employee = await _employeeRepository.GetAsync(detail.EmployeeId);
+                            detail.CommissionRate = employee.ServiceCommissionRate;
+                            detail.CommissionAmount = detail.ServicePrice * detail.CommissionRate / 100;
+
                             await _reservationDetailRepository.UpdateAsync(detail);
+                            servicesPriceChanged = true;
                         }
                     }
                 }
 
-                // 2. İndirim ve ek ücret güncelle
-                reservation.DiscountAmount = input.AdditionalDiscount > 0 ? input.AdditionalDiscount : null;
-                reservation.ExtraAmount = input.AdditionalCharge > 0 ? input.AdditionalCharge : null;
+                // 4. İndirim ve ek ücret güncelle (sadece değişiklik varsa)
+                bool discountChanged = false;
+                bool extraChanged = false;
 
-                // 3. Fiyatları yeniden hesapla
-                await RecalculatePricesAsync(input.ReservationId);
+                if (input.AdditionalDiscount >= 0)
+                {
+                    var currentDiscount = reservation.DiscountAmount ?? 0;
+                    if (Math.Abs(currentDiscount - input.AdditionalDiscount) > 0.01m)
+                    {
+                        reservation.DiscountAmount = input.AdditionalDiscount > 0 ? input.AdditionalDiscount : null;
+                        discountChanged = true;
+                    }
+                }
+                if (input.AdditionalCharge >= 0)
+                {
+                    var currentExtra = reservation.ExtraAmount ?? 0;
+                    if (Math.Abs(currentExtra - input.AdditionalCharge) > 0.01m)
+                    {
+                        reservation.ExtraAmount = input.AdditionalCharge > 0 ? input.AdditionalCharge : null;
+                        extraChanged = true;
+                    }
+                }
 
-                // 4. Rezervasyon durumunu güncelle
+
+                // 5. Fiyatları yeniden hesapla (sadece değişiklik varsa)
+                if (servicesPriceChanged || discountChanged || extraChanged)
+                {
+                    await RecalculatePricesAsync(input.ReservationId);
+                    // Reservation'ı tekrar yükle çünkü RecalculatePricesAsync güncelledi
+                    reservation = await _reservationRepository.GetAsync(input.ReservationId);
+                }
+
+
+                // 6. Ödeme doğrulamaları
+                if (input.PaymentAmount > 0)
+                {
+                    if (!input.PaymentMethod.HasValue)
+                    {
+                        throw new UserFriendlyException("Ödeme tutarı girildiğinde ödeme yöntemi seçilmelidir!");
+                    }
+
+                    // Ödeme tutarı kontrolü
+                    var currentPaidAmount = await _paymentAppService.GetReservationPaidAmountAsync(input.ReservationId);
+                    var maxPayableAmount = reservation.FinalPrice - currentPaidAmount;
+
+                    if (input.PaymentAmount > maxPayableAmount + 0.01m) // Küçük tolerans
+                    {
+                        throw new UserFriendlyException($"Ödeme tutarı kalan borçtan fazla olamaz! (Kalan: ₺{maxPayableAmount:N2})");
+                    }
+                }
+
+                // 7. Rezervasyon durumunu güncelle
                 reservation.Status = ReservationStatus.Arrived;
                 await _reservationRepository.UpdateAsync(reservation);
 
-                // 5. Ödeme kaydet (eğer tutar > 0 ise)
-                if (input.PaymentAmount > 0)
+
+                // 8. Ödeme kaydet (eğer tutar > 0 ise)
+                if (input.PaymentAmount > 0 && input.PaymentMethod.HasValue)
                 {
                     var paymentDto = new CreateReservationPaymentDto
                     {
                         ReservationId = input.ReservationId,
                         Amount = input.PaymentAmount,
-                        PaymentMethod = input.PaymentMethod,
-                        Description = input.PaymentNote ?? $"Rezervasyon tamamlama ödemesi - {DateTime.Now:dd.MM.yyyy HH:mm}"
+                        PaymentMethod = input.PaymentMethod.Value,
+                        Description = string.IsNullOrWhiteSpace(input.PaymentNote)
+                            ? $"Rezervasyon tamamlama ödemesi - {DateTime.Now:dd.MM.yyyy HH:mm}"
+                            : input.PaymentNote
                     };
 
                     await _paymentAppService.CreateReservationPaymentAsync(paymentDto);
                 }
 
+                // 9. Müşteri borcunu güncelle (kalan tutar varsa)
+                var finalPaidAmount = await _paymentAppService.GetReservationPaidAmountAsync(input.ReservationId);
+                var remainingDebt = reservation.FinalPrice - finalPaidAmount;
+
+                if (remainingDebt > 0.01m) // Küçük tolerans
+                {
+                    var customer = await _customerRepository.GetAsync(reservation.CustomerId);
+                    customer.TotalDebt += remainingDebt;
+                    await _customerRepository.UpdateAsync(customer);
+                }
+
                 await uow.CompleteAsync();
 
+                // 10. Güncellenmiş DTO'yu döndür
                 return await GetAsync(input.ReservationId);
             }
             catch (Exception)
