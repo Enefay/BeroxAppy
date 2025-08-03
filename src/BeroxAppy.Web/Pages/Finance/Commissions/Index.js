@@ -160,8 +160,15 @@
     function showPaymentModal() {
         if (selectedEmployees.length === 0) return;
 
-        var totalAmount = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
+        var totalAmount = selectedEmployees.reduce((sum, emp) => {
+            return sum + Number(
+                String(emp.amount).replace('.', '').replace(',', '.')
+            );
+        }, 0);
+
         var isMultiple = selectedEmployees.length > 1;
+
+        console.log("totalAmount", totalAmount)
 
         // Modal başlığı
         $('#ModalTitle').text(isMultiple ?
@@ -186,7 +193,14 @@
         $('#SelectedEmployeesList').html(employeeListHtml);
 
         // Tutarları ayarla
-        $('#TotalCommissionAmount').val('₺' + totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }));
+        //$('#TotalCommissionAmount').val('₺' + totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }));
+
+        $('#TotalCommissionAmount').val(totalAmount.toLocaleString('tr-TR', {
+            style: 'currency',
+            currency: 'TRY',
+            minimumFractionDigits: 2
+        }).replace('₺', '').trim());
+
         $('#PaymentAmount').val(totalAmount).attr('max', totalAmount);
 
         // Dağılım tablosunu göster/gizle
@@ -205,6 +219,7 @@
         if (selectedEmployees.length <= 1) return;
 
         var paymentAmount = parseFloat($('#PaymentAmount').val()) || 0;
+
         var totalCommission = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
 
         if (totalCommission === 0) return;
@@ -233,49 +248,38 @@
     }
 
     function saveCommissionPayment() {
-        var form = $('#PayCommissionForm');
 
-        if (!form[0].checkValidity()) {
-            form[0].reportValidity();
-            return;
-        }
-
-        var paymentAmount = parseFloat($('#PaymentAmount').val());
+        var paymentAmount = parseFloat($('#PaymentAmount').val().replace(',', '.'));
         var paymentMethod = parseInt($('#PaymentMethod').val());
-        var note = $('#PaymentNote').val();
 
-        if (paymentAmount <= 0 || isNaN(paymentMethod)) {
-            abp.notify.error('Lütfen tüm gerekli alanları doldurun.');
+        // Validasyon
+        if (isNaN(paymentAmount)) {
+            abp.notify.error('Lütfen geçerli bir ödeme tutarı girin');
             return;
         }
-
-        // Ödeme dağılımını hesapla
-        var totalCommission = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
-        var employeeCommissions = [];
-        var distributedTotal = 0;
-
-        selectedEmployees.forEach(function (emp, index) {
-            var ratio = emp.amount / totalCommission;
-            var employeePayment = index === selectedEmployees.length - 1 ?
-                paymentAmount - distributedTotal :
-                Math.round(paymentAmount * ratio * 100) / 100;
-
-            distributedTotal += employeePayment;
-
-            employeeCommissions.push({
-                employeeId: emp.employeeId,
-                employeeName: emp.employeeName,
-                amount: employeePayment
-            });
-        });
+        var paymentMethodStr = $('#PaymentMethod').val();
+        if (!paymentMethodStr) {
+            abp.notify.error('Lütfen ödeme yöntemi seçin.');
+            return;
+        }
+     
 
         var requestData = {
-            employeeCommissions: employeeCommissions,
+            employeeCommissions: selectedEmployees.map(function (emp) {
+                return {
+                    employeeId: emp.employeeId,
+                    employeeName: emp.employeeName,
+                    amount: parseFloat(emp.amount.toString().replace(',', '.'))
+                };
+            }),
             paymentMethod: paymentMethod,
-            note: note
+            paymentAmount: parseFloat(paymentAmount)
         };
 
+
         abp.ui.setBusy($('#PayCommissionModal'));
+
+        console.log("Gönderilen veri:", requestData);
 
         abp.ajax({
             url: '/Finance/Commissions/Index?handler=PayCommission',

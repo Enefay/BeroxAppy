@@ -113,8 +113,12 @@ namespace BeroxAppy.Services
 
             foreach (var employee in employees)
             {
-                var lastPayment = await _employeePaymentRepository
-                    .FindAsync(x => x.EmployeeId == employee.Id && x.PaymentType == PaymentType.Commission);
+                var lastPaymentList = await _employeePaymentRepository
+                .GetListAsync(x => x.EmployeeId == employee.Id && x.PaymentType == PaymentType.Commission);
+
+                var lastPayment = lastPaymentList
+                    .OrderByDescending(x => x.PaymentDate)
+                    .LastOrDefault();
 
                 result.Add(new EmployeeCommissionSummaryDto
                 {
@@ -187,6 +191,7 @@ namespace BeroxAppy.Services
         // Çalışan performans raporu
         public async Task<EmployeePerformanceDto> GetEmployeePerformanceAsync(Guid employeeId, DateTime startDate, DateTime endDate)
         {
+            endDate = endDate.Date.AddDays(1).AddTicks(-1);
             var employee = await _employeeRepository.GetAsync(employeeId);
 
             var commissions = await _commissionRepository.GetListAsync(x =>
@@ -299,6 +304,12 @@ namespace BeroxAppy.Services
                 throw new UserFriendlyException("Ödeme tutarı toplam komisyondan fazla!");
             }
 
+
+     
+
+
+            var isPartial = amount < employee.CurrentPeriodCommission + amount; // Ödenen, toplamdan azsa kısmi
+
             // Ödeme kaydı
             var payment = new EmployeePayment
             {
@@ -309,13 +320,18 @@ namespace BeroxAppy.Services
                 TotalAmount = amount,
                 PaymentDate = DateTime.Now,
                 PaymentMethod = paymentMethod,
-                Note = note ?? $"Komisyon ödemesi - {DateTime.Now:dd.MM.yyyy}",
+                Note = string.IsNullOrWhiteSpace(note)
+                ? (isPartial
+                    ? $"Kısmi komisyon ödemesi - {DateTime.Now:dd.MM.yyyy}"
+                    : $"Komisyon ödemesi - {DateTime.Now:dd.MM.yyyy}")
+                : note,
                 PeriodStart = employee.LastCommissionResetDate,
                 PeriodEnd = DateTime.Now,
                 PaymentType = PaymentType.Commission
             };
 
             await _employeePaymentRepository.InsertAsync(payment);
+
 
             // Komisyonu düş
             employee.CurrentPeriodCommission -= amount;

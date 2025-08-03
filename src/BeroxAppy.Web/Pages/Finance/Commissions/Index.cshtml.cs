@@ -11,6 +11,7 @@ using BeroxAppy.Employees;
 using Volo.Abp.Domain.Repositories;
 using BeroxAppy.Finance;
 using BeroxAppy.Finances;
+using System.ComponentModel.DataAnnotations;
 
 namespace BeroxAppy.Web.Pages.Finance.Commissions
 {
@@ -35,6 +36,8 @@ namespace BeroxAppy.Web.Pages.Finance.Commissions
             await LoadDataAsync();
         }
 
+
+        //todo cladue bababa
         public async Task<IActionResult> OnPostPayCommissionAsync([FromBody] PayCommissionRequestDto request)
         {
             try
@@ -44,27 +47,38 @@ namespace BeroxAppy.Web.Pages.Finance.Commissions
                     return new JsonResult(new { success = false, message = "Ödeme yapılacak çalışan seçilmedi." });
                 }
 
+                decimal paymentLeft = request.PaymentAmount;
+                int employeeCount = 0;
+                decimal totalPaid = 0;
+
                 foreach (var employeeCommission in request.EmployeeCommissions)
                 {
-                    if (employeeCommission.Amount > 0)
+                    if (employeeCommission.Amount > 0 && paymentLeft > 0)
                     {
+                        // Çalışanın bekleyen komisyonundan fazla ödeme olamaz!
+                        decimal payThis = Math.Min(employeeCommission.Amount, paymentLeft);
+
                         await _financeAppService.PayEmployeeCommissionAsync(
                             employeeCommission.EmployeeId,
-                            employeeCommission.Amount,
-                            request.PaymentMethod,
-                            request.Note
+                            payThis,
+                            request.PaymentMethod
                         );
+
+                        paymentLeft -= payThis;
+                        totalPaid += payThis;
+                        employeeCount++;
+
+                        if (paymentLeft <= 0)
+                            break;
                     }
                 }
 
-                var totalAmount = request.EmployeeCommissions.Sum(x => x.Amount);
-                var employeeCount = request.EmployeeCommissions.Count(x => x.Amount > 0);
 
                 return new JsonResult(new
                 {
                     success = true,
-                    message = $"{employeeCount} çalışana toplam ₺{totalAmount:N2} komisyon ödemesi başarıyla yapıldı.",
-                    totalAmount = totalAmount,
+                    message = $"{employeeCount} çalışana toplam ₺{totalPaid:N2} komisyon ödemesi başarıyla yapıldı.",
+                    totalAmount = totalPaid,
                     employeeCount = employeeCount
                 });
             }
@@ -189,15 +203,23 @@ namespace BeroxAppy.Web.Pages.Finance.Commissions
     // Yardımcı DTO'lar
     public class PayCommissionRequestDto
     {
+        [Required]
         public List<EmployeeCommissionDto> EmployeeCommissions { get; set; }
+        [Required]
         public PaymentMethod PaymentMethod { get; set; }
-        public string Note { get; set; }
+        [Required]
+        public decimal PaymentAmount { get; set; }
     }
 
     public class EmployeeCommissionDto
     {
+        [Required]
         public Guid EmployeeId { get; set; }
+
+        [Required]
         public string EmployeeName { get; set; }
+
+        [Range(0.01, double.MaxValue)]
         public decimal Amount { get; set; }
     }
 

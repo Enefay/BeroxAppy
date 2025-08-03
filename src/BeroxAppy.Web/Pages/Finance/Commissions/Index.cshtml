@@ -1,4 +1,5 @@
 ﻿@page
+@using BeroxAppy.Enums
 @using Microsoft.AspNetCore.Authorization
 @using BeroxAppy.Web.Pages.Finance.Commissions
 @using BeroxAppy.Localization
@@ -134,7 +135,7 @@
                                         <th>Çalışan</th>
                                         <th>Bekleyen Komisyon</th>
                                         <th>Son Ödeme</th>
-                                        <th>Komisyon Süresi</th>
+                                        <th>Son Ödemeden Geçen Süre</th>
                                         <th>Durum</th>
                                         <th>İşlemler</th>
                                     </tr>
@@ -185,7 +186,6 @@
                                                 {
                                                     <span>@commission.LastPaymentDate.Value.ToString("dd.MM.yyyy")</span>
                                                     <br>
-                                                    <small class="text-muted">@((DateTime.Now - commission.LastPaymentDate.Value).Days) gün önce</small>
                                                 }
                                                 else
                                                 {
@@ -276,7 +276,7 @@
 
                     <!-- Ödeme Bilgileri -->
                     <abp-row>
-                        <abp-column size="_6">
+                        <abp-column size="_12">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Toplam Komisyon</label>
                                 <input type="text" id="TotalCommissionAmount" class="form-control form-control-lg fw-bold text-success" readonly />
@@ -289,33 +289,21 @@
                                 <div class="form-text">Toplam tutardan az ödeme yapabilirsiniz</div>
                             </div>
                         </abp-column>
-                    </abp-row>
-
-                    <abp-row>
                         <abp-column size="_6">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Ödeme Yöntemi *</label>
                                 <select id="PaymentMethod" class="form-select" required>
                                     <option value="">Seçiniz</option>
-                                    <option value="0">Nakit</option>
-                                    <option value="1">Kredi Kartı</option>
-                                    <option value="2">Banka Kartı</option>
-                                    <option value="3">Havale/EFT</option>
+                                    @foreach (var m in Enum.GetValues(typeof(PaymentMethod)).Cast<PaymentMethod>())
+                                    {
+                                        <option value="@( (int)m )">@m.ToString()</option>
+                                    }
                                 </select>
-                            </div>
-                        </abp-column>
-                        <abp-column size="_6">
-                            <div class="mb-3">
-                                <label class="form-label">Ödeme Tarihi</label>
-                                <input type="date" id="PaymentDate" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
                             </div>
                         </abp-column>
                     </abp-row>
 
-                    <div class="mb-3">
-                        <label class="form-label">Ödeme Notu</label>
-                        <textarea id="PaymentNote" class="form-control" rows="3" placeholder="Ödeme ile ilgili notlarınızı yazabilirsiniz..."></textarea>
-                    </div>
+
 
                     <!-- Ödeme Dağılımı (Toplu ödeme için) -->
                     <div id="PaymentDistribution" class="mb-3" style="display: none;">
