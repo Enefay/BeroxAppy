@@ -30,7 +30,7 @@ namespace BeroxAppy.Finance
         public DateTime PaymentDate { get; set; }
 
         [MaxLength(500)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         public bool IsRefund { get; set; } = false;
 

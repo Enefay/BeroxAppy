@@ -310,10 +310,10 @@
         }).done(function (result) {
             if (result.success) {
                 var data = result.data;
-                var performance = data.Performance;
-                var recentPayments = data.RecentPayments;
+                var performance = data.performance;
+                var recentPayments = data.recentPayments;
 
-                $('#DetailEmployeeName').text(performance.EmployeeName);
+                $('#DetailEmployeeName').text(performance.employeeName);
 
                 var contentHtml = `
                     <div class="row mb-4">
@@ -322,25 +322,25 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-success mb-1">₺${performance.TotalCommissionEarned.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
+                                        <h5 class="text-success mb-1">₺${performance.totalCommissionEarned.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
                                         <small class="text-muted">Kazanılan Komisyon</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-info mb-1">₺${performance.TotalCommissionPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
+                                        <h5 class="text-info mb-1">₺${performance.totalCommissionPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
                                         <small class="text-muted">Ödenen Komisyon</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-warning mb-1">₺${(performance.TotalCommissionEarned - performance.TotalCommissionPaid).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
+                                        <h5 class="text-warning mb-1">₺${(performance.totalCommissionEarned - performance.totalCommissionPaid).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
                                         <small class="text-muted">Kalan Komisyon</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-primary mb-1">${performance.ServiceCount}</h5>
+                                        <h5 class="text-primary mb-1">${performance.serviceCount}</h5>
                                         <small class="text-muted">Toplam Hizmet</small>
                                     </div>
                                 </div>
@@ -365,10 +365,10 @@
                                         <tbody>
                                             ${recentPayments.map(payment => `
                                                 <tr>
-                                                    <td>${new Date(payment.PaymentDate).toLocaleDateString('tr-TR')}</td>
-                                                    <td><strong>₺${payment.CommissionAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></td>
-                                                    <td><span class="badge bg-secondary">${payment.PaymentMethodDisplay}</span></td>
-                                                    <td><small>${payment.Note || '-'}</small></td>
+                                                    <td>${new Date(payment.paymentDate).toLocaleDateString('tr-TR')}</td>
+                                                    <td><strong>₺${payment.commissionAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></td>
+                                                    <td><span class="badge bg-secondary">${payment.paymentMethodDisplay}</span></td>
+                                                    <td><small>${payment.note || '-'}</small></td>
                                                 </tr>
                                             `).join('')}
                                         </tbody>

@@ -22,7 +22,7 @@ namespace BeroxAppy.Services
         public string Title { get; set; }
 
         [MaxLength(500)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         public Gender TargetGender { get; set; }
 

@@ -25,7 +25,7 @@ namespace BeroxAppy.Finance
         public bool IsClosed { get; set; } = false;
 
         [MaxLength(500)]
-        public string Note { get; set; }
+        public string? Note { get; set; }
 
         // Navigation property
         public ICollection<Payment> Payments { get; set; }

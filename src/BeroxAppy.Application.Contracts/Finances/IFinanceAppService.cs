@@ -19,5 +19,10 @@ namespace BeroxAppy.Finances
         Task<DailyFinancialSummaryDto> CloseDayAsync(CloseDayDto input);
         Task<List<DailyFinancialSummaryDto>> GetPeriodSummaryAsync(DateTime startDate, DateTime endDate);
         Task PayEmployeeCommissionAsync(Guid employeeId, decimal amount, PaymentMethod paymentMethod, string? note = null);
+
+
+
+        // Maaş ödeme metodları
+ 
     }
 }

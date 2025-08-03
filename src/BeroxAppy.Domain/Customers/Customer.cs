@@ -27,15 +27,15 @@ namespace BeroxAppy.Customers
         public DateTime? BirthDate { get; set; }
 
         [MaxLength(100)]
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
         public Gender Gender { get; set; }
 
         [MaxLength(1000)]
-        public string Note { get; set; }
+        public string? Note { get; set; }
 
         [MaxLength(50)]
-        public string Instagram { get; set; }
+        public string? Instagram { get; set; }
 
         public decimal DiscountRate { get; set; } // %
 

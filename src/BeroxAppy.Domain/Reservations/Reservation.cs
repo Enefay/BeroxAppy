@@ -21,7 +21,7 @@ namespace BeroxAppy.Reservations
         public Customer Customer { get; set; }
 
         [MaxLength(500)]
-        public string Note { get; set; }
+        public string? Note { get; set; }
 
         public DateTime ReservationDate { get; set; }
         public TimeSpan StartTime { get; set; }

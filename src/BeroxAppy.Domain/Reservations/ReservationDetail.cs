@@ -39,6 +39,6 @@ namespace BeroxAppy.Reservations
         public decimal CommissionAmount { get; set; } // Hesaplanan tutar
 
         [MaxLength(200)]
-        public string Note { get; set; }
+        public string? Note { get; set; }
     }
 }
