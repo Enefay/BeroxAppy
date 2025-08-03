@@ -1,0 +1,403 @@
+﻿@page
+@using Microsoft.AspNetCore.Authorization
+@using BeroxAppy.Web.Pages.Finance.Salaries
+@using BeroxAppy.Localization
+@using Microsoft.Extensions.Localization
+@model IndexModel
+@inject IStringLocalizer<BeroxAppyResource> L
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Button
+
+
+@section scripts
+{
+    <abp-script-bundle>
+        <abp-script src="/Pages/Finance/Salaries/Index.js" />
+    </abp-script-bundle>
+}
+
+<div class="container-fluid">
+    <!-- Sayfa Başlığı -->
+    <abp-row class="mb-3">
+        <abp-column size="_8">
+            <h1 class="mb-0">Maaş Ödemeleri</h1>
+            <small class="text-muted">Çalışanların maaş ödemelerini yönetin</small>
+        </abp-column>
+        <abp-column size="_4" class="text-end">
+            <abp-button id="RefreshButton" text="Yenile" icon="refresh" button-type="Primary" />
+            <abp-button id="PaySelectedButton" text="Seçilenleri Öde" icon="money-bill" button-type="Success" disabled="true" />
+        </abp-column>
+    </abp-row>
+
+    <!-- Özet Kartları -->
+    <abp-row class="mb-4">
+        <abp-column size="_3">
+            <abp-card class="border-start border-danger border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-danger mb-1">Vadesi Gelen</h6>
+                            <h4 class="mb-0">₺@Model.Summary.TotalDueSalaries.ToString("N2")</h4>
+                            <small class="text-muted">@Model.Summary.DueEmployeeCount çalışan</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_3">
+            <abp-card class="border-start border-info border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-info mb-1">Aktif Çalışan</h6>
+                            <h4 class="mb-0">@Model.Summary.TotalEmployeeCount</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_3">
+            <abp-card class="border-start border-success border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-success mb-1">Bu Ay Ödenen</h6>
+                            <h4 class="mb-0">₺@Model.Summary.ThisMonthPaidSalaries.ToString("N2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_3">
+            <abp-card class="border-start border-warning border-4">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-warning mb-1">Dönem Özeti</h6>
+                            <small class="text-muted">
+                                Günlük: @Model.Summary.PeriodSummaries[BeroxAppy.Enums.SalaryPeriodType.Daily].DueCount/@Model.Summary.PeriodSummaries[BeroxAppy.Enums.SalaryPeriodType.Daily].EmployeeCount<br>
+                                Haftalık: @Model.Summary.PeriodSummaries[BeroxAppy.Enums.SalaryPeriodType.Weekly].DueCount/@Model.Summary.PeriodSummaries[BeroxAppy.Enums.SalaryPeriodType.Weekly].EmployeeCount<br>
+                                Aylık: @Model.Summary.PeriodSummaries[BeroxAppy.Enums.SalaryPeriodType.Monthly].DueCount/@Model.Summary.PeriodSummaries[BeroxAppy.Enums.SalaryPeriodType.Monthly].EmployeeCount
+                            </small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- Filtreleme -->
+    <abp-row class="mb-3">
+        <abp-column size="_12">
+            <abp-card>
+                <abp-card-body class="py-2">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="ShowOnlyDue" checked>
+                            <label class="form-check-label" for="ShowOnlyDue">
+                                Sadece vadesi gelenleri göster
+                            </label>
+                        </div>
+                        <div class="vr"></div>
+                        <div>
+                            <label class="form-label mb-0 me-2">Dönem:</label>
+                            <select id="SalaryPeriodFilter" class="form-select d-inline-block" style="width: 150px;">
+                                <option value="">Tümü</option>
+                                <option value="1">Günlük</option>
+                                <option value="2">Haftalık</option>
+                                <option value="3">2 Haftalık</option>
+                                <option value="4">Aylık</option>
+                            </select>
+                        </div>
+                        <div>
+                            <input type="text" id="EmployeeNameFilter" class="form-control" placeholder="Çalışan adı ara..." style="width: 200px;">
+                        </div>
+                        <abp-button id="ApplyFiltersButton" text="Filtrele" icon="filter" button-type="Outline_Primary" size="Small" />
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
+    <!-- Çalışan Maaşları Listesi -->
+    <abp-row>
+        <abp-column size="_12">
+            <abp-card>
+                <abp-card-header>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Çalışan Maaşları
+                        </h5>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="SelectAllCheckbox">
+                            <label class="form-check-label" for="SelectAllCheckbox">
+                                Tümünü Seç
+                            </label>
+                        </div>
+                    </div>
+                </abp-card-header>
+                <abp-card-body class="p-0">
+                    @if (Model.EmployeeSalaries?.Any() == true)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="SalariesTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="50">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="HeaderSelectAll">
+                                            </div>
+                                        </th>
+                                        <th>Çalışan</th>
+                                        <th>Maaş Bilgisi</th>
+                                        <th>Son Ödeme</th>
+                                        <th>Sonraki Ödeme</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var salary in Model.EmployeeSalaries)
+                                    {
+                                        <tr data-employee-id="@salary.EmployeeId"
+                                            data-employee-name="@salary.EmployeeName"
+                                            data-amount="@salary.CalculatedAmount"
+                                            data-period="@((int)salary.SalaryPeriod)"
+                                            class="salary-row @(salary.IsDue ? "is-due" : "")">
+                                            <td>
+                                                @if (salary.CanPay)
+                                                {
+                                                    <div class="form-check">
+                                                        <input class="form-check-input salary-checkbox"
+                                                               type="checkbox"
+                                                               value="@salary.EmployeeId"
+                                                               data-amount="@salary.CalculatedAmount">
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm me-3">
+                                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width: 40px; height: 40px;">
+                                                            @salary.EmployeeName.Substring(0, Math.Min(2, salary.EmployeeName.Length)).ToUpper()
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="mb-0">@salary.EmployeeName</h6>
+                                                        <small class="text-muted">Çalışan</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <span class="fw-bold">₺@salary.FixedSalary.ToString("N2")</span>
+                                                    <small class="text-muted d-block">@salary.SalaryPeriodDisplay</small>
+                                                    <small class="text-info">Dönem tutarı: ₺@salary.CalculatedAmount.ToString("N2")</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @if (salary.LastSalaryPaymentDate.HasValue)
+                                                {
+                                                    <span>@salary.LastSalaryPaymentDate.Value.ToString("dd.MM.yyyy")</span>
+                                                    <br>
+                                                    <small class="text-muted">@((DateTime.Now - salary.LastSalaryPaymentDate.Value).Days) gün önce</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Hiç ödeme yok</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="@(salary.IsDue ? "text-danger fw-bold" : "")">
+                                                    @salary.NextPaymentDue.ToString("dd.MM.yyyy")
+                                                </span>
+                                                @if (salary.DaysOverdue > 0)
+                                                {
+                                                    <br>
+                                                    <small class="text-danger">@salary.DaysOverdue gün gecikme</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (salary.IsDue)
+                                                {
+                                                    <span class="badge bg-danger">VADESİ GELDİ</span>
+                                                }
+                                                else if (salary.CanPay)
+                                                {
+                                                    <span class="badge bg-warning text-dark">ERKEN ÖDENEBİLİR</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">GÜNCEL</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    @if (salary.CanPay)
+                                                    {
+                                                        <abp-button text="Öde"
+                                                                    icon="money-bill"
+                                                                    button-type="@(salary.IsDue
+                                                                    ? AbpButtonType.Danger
+                                                                    : AbpButtonType.Warning)"
+                                                                    size="Small"
+                                                                    class="pay-single-btn"
+                                                                    data-employee-id="@salary.EmployeeId"
+                                                                    data-employee-name="@salary.EmployeeName"
+                                                                    data-amount="@salary.CalculatedAmount" />
+                                                    }
+                                                    <abp-button text="Detay"
+                                                                icon="eye"
+                                                                button-type="Outline_Info"
+                                                                size="Small"
+                                                                class="view-details-btn"
+                                                                data-employee-id="@salary.EmployeeId" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Çalışan bulunamadı</h5>
+                            <p class="text-muted">Maaş ödemesi yapılabilecek çalışan bulunmuyor.</p>
+                        </div>
+                    }
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+</div>
+
+<!-- Tekil/Toplu Ödeme Modalı -->
+<div class="modal fade" id="PaySalaryModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-money-bill me-2"></i>
+                    <span id="ModalTitle">Maaş Öde</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="PaySalaryForm">
+                    <!-- Seçili Çalışanlar -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3">Seçili Çalışanlar</h6>
+                        <div id="SelectedEmployeesList" class="border rounded p-3 bg-light">
+                            <!-- JavaScript ile doldurulacak -->
+                        </div>
+                    </div>
+
+                    <!-- Ödeme Bilgileri -->
+                    <abp-row>
+                        <abp-column size="_6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Toplam Maaş</label>
+                                <input type="text" id="TotalSalaryAmount" class="form-control form-control-lg fw-bold text-success" readonly />
+                            </div>
+                        </abp-column>
+                        <abp-column size="_6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Ödenecek Tutar *</label>
+                                <input type="number" id="PaymentAmount" class="form-control form-control-lg" min="0" step="0.01" required />
+                                <div class="form-text">Eksik ödeme yapabilirsiniz</div>
+                            </div>
+                        </abp-column>
+                    </abp-row>
+
+                    <abp-row>
+                        <abp-column size="_6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Ödeme Yöntemi *</label>
+                                <select id="PaymentMethod" class="form-select" required>
+                                    <option value="">Seçiniz</option>
+                                    <option value="0">Nakit</option>
+                                    <option value="1">Kredi Kartı</option>
+                                    <option value="2">Banka Kartı</option>
+                                    <option value="3">Havale/EFT</option>
+                                </select>
+                            </div>
+                        </abp-column>
+                        <abp-column size="_6">
+                            <div class="mb-3">
+                                <label class="form-label">Ödeme Tarihi</label>
+                                <input type="date" id="PaymentDate" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                            </div>
+                        </abp-column>
+                    </abp-row>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ödeme Notu</label>
+                        <textarea id="PaymentNote" class="form-control" rows="3" placeholder="Maaş ödemesi ile ilgili notlarınızı yazabilirsiniz..."></textarea>
+                    </div>
+
+                    <!-- Ödeme Dağılımı (Toplu ödeme için) -->
+                    <div id="PaymentDistribution" class="mb-3" style="display: none;">
+                        <h6 class="fw-bold mb-3">Ödeme Dağılımı</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Çalışan</th>
+                                        <th>Toplam Maaş</th>
+                                        <th>Ödenecek Tutar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="DistributionTableBody">
+                                    <!-- JavaScript ile doldurulacak -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>İptal
+                </button>
+                <button type="button" class="btn btn-success btn-lg" id="PaySalarySaveButton">
+                    <i class="fas fa-money-bill me-1"></i>
+                    <span id="PayButtonText">Ödeme Yap</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Çalışan Detay Modalı -->
+<div class="modal fade" id="EmployeeSalaryDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>
+                    <span id="DetailEmployeeName">Çalışan Maaş Detayı</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="EmployeeSalaryDetailContent">
+                    <!-- AJAX ile yüklenecek -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

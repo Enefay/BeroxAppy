@@ -7,6 +7,7 @@ using BeroxAppy.Finances.FinanceAppDtos;
 using BeroxAppy.Finances;
 using BeroxAppy.Reservations;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace BeroxAppy.Web.Pages.Finance.Dashboard
 {
@@ -33,10 +34,32 @@ namespace BeroxAppy.Web.Pages.Finance.Dashboard
         public CashRegisterDto CashRegister { get; set; }
         public List<ReservationDto> TodayReservations { get; set; }
 
-        public async Task OnGetAsync(DateTime? date = null)
+        public async Task OnGetAsync(string? date)
         {
-            SelectedDate = date?.Date ?? DateTime.Now.Date;
-
+            if (!string.IsNullOrEmpty(date))
+            {
+                // Kabul edilecek formatlar
+                var formats = new[] { "yyyy-MM-dd", "dd.MM.yyyy" };
+                if (DateTime.TryParseExact(
+                        date,
+                        formats,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out var parsedDate))
+                {
+                    SelectedDate = parsedDate;
+                }
+                else
+                {
+                    // Güvenlik amaçlý fallback
+                    SelectedDate = DateTime.Today;
+                    ModelState.AddModelError("date", "Tarih formatý geçerli deðil.");
+                }
+            }
+            else
+            {
+                SelectedDate = DateTime.Today;
+            }
             // Dashboard verileri
             Dashboard = await _financeAppService.GetDashboardAsync(SelectedDate);
 

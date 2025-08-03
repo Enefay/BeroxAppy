@@ -1,5 +1,6 @@
 ﻿using BeroxAppy.Enums;
 using BeroxAppy.Finances.FinanceAppDtos;
+using BeroxAppy.Finances.SalaryDtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,6 +24,19 @@ namespace BeroxAppy.Finances
 
 
         // Maaş ödeme metodları
- 
+        /// <summary>
+        /// Tüm çalışanların maaş durumlarını getirir
+        /// </summary>
+        Task<List<EmployeeSalarySummaryDto>> GetEmployeeSalariesAsync();
+
+        /// <summary>
+        /// Çalışana maaş ödemesi yapar
+        /// </summary>
+        Task PayEmployeeSalaryAsync(Guid employeeId, decimal amount, PaymentMethod paymentMethod, string? note = null);
+
+        /// <summary>
+        /// Çalışanın maaş performansını getirir
+        /// </summary>
+        Task<EmployeeSalaryPerformanceDto> GetEmployeeSalaryPerformanceAsync(Guid employeeId, DateTime startDate, DateTime endDate);
     }
 }

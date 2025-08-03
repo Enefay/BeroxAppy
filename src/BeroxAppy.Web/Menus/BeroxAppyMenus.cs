@@ -11,7 +11,8 @@ public class BeroxAppyMenus
     public const string FinanceDashboard = "Finance.Dashboard";
     public const string FinanceCommission = "Finance.Commission";
     public const string FinanceCashRegister = "Finance.CashRegister";
-    
+    public const string FinanceSalaries = Finance + ".Salaries";
+    public const string FinanceReports = Finance + ".Reports";
 
     //Add your menu items here...
 

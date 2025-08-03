@@ -73,6 +73,7 @@ namespace BeroxAppy.Enums
     {
         Salary = 1,     // Maaş
         Commission = 2, // Komisyon
-        Bonus = 3       // Prim/Kesinti
+        Bonus = 3,       // Prim/Kesinti
+        Advance = 4      // Avans (ileride eklenebilir)
     }
 }

@@ -131,6 +131,23 @@ public class BeroxAppyMenuContributor : IMenuContributor
          icon: "fas fa-cash-register"
          ));
 
+        // MAAŞ ÖDEMELERİ
+        financeMenu.AddItem(new ApplicationMenuItem(
+              BeroxAppyMenus.FinanceSalaries,
+              l["Menu:Finance:Salaries"],
+              url: "/Finance/Salaries",
+              icon: "fas fa-money-bill-wave"
+          ));
+
+        // Günlük Raporlar
+        financeMenu.AddItem(new ApplicationMenuItem(
+            BeroxAppyMenus.FinanceReports,
+            l["Menu:Finance:Reports"],
+            url: "/Finance/Reports",
+            icon: "fas fa-chart-bar"
+        ));
+
+
         context.Menu.AddItem(financeMenu);
 
         if (MultiTenancyConsts.IsEnabled)

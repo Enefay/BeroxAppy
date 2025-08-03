@@ -255,6 +255,135 @@
         </abp-column>
     </abp-row>
 
+    <!-- Maaş Durumu Widget'ı -->
+    <abp-row class="mb-4">
+        <abp-column size="_12">
+            <abp-card class="border-start border-warning border-4">
+                <abp-card-header>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-money-bill-wave text-warning me-2"></i>
+                            Maaş Durumu
+                        </h5>
+                        <a href="/Finance/Salaries" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-external-link-alt me-1"></i>Detay
+                        </a>
+                    </div>
+                </abp-card-header>
+                <abp-card-body>
+                    @if (Model.Dashboard.SalarySummary.TotalDueEmployees > 0)
+                    {
+                        <!-- Acil Durum Uyarısı -->
+                        <div class="alert alert-danger mb-3" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>@Model.Dashboard.SalarySummary.TotalDueEmployees çalışanın maaş vadesi geldi!</strong>
+                            Toplam: ₺@Model.Dashboard.SalarySummary.TotalDueAmount.ToString("N2")
+                        </div>
+
+                        <!-- Dönem Özeti -->
+                        <div class="row mb-3">
+                            @foreach (var period in Model.Dashboard.SalarySummary.DueCountByPeriod)
+                            {
+                                <div class="col-md-3 mb-2">
+                                    <div class="text-center p-2 bg-light rounded">
+                                        <h6 class="text-danger mb-1">@period.Value</h6>
+                                        <small class="text-muted">
+                                            @switch (period.Key)
+                                            {
+                                                case BeroxAppy.Enums.SalaryPeriodType.Daily:
+                                                    @:Günlük
+                                                    break;
+                                                case BeroxAppy.Enums.SalaryPeriodType.Weekly:
+                                                    @:Haftalık
+                                                    break;
+                                                case BeroxAppy.Enums.SalaryPeriodType.BiWeekly:
+                                                    @:2 Haftalık
+                                                    break;
+                                                case BeroxAppy.Enums.SalaryPeriodType.Monthly:
+                                                    @:Aylık
+                                                    break;
+                                            }
+                                        </small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Acil Maaşlar (7+ gün geciken) -->
+                        @if (Model.Dashboard.SalarySummary.UrgentSalaries?.Any() == true)
+                        {
+                            <div class="mb-3">
+                                <h6 class="text-danger mb-2">
+                                    <i class="fas fa-fire me-1"></i>
+                                    Acil Maaşlar (7+ gün geciken)
+                                </h6>
+                                <div class="list-group">
+                                    @foreach (var urgent in Model.Dashboard.SalarySummary.UrgentSalaries.Take(5))
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                            <div>
+                                                <strong>@urgent.EmployeeName</strong>
+                                                <br>
+                                                <small class="text-muted">@urgent.DaysOverdue gün gecikme</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-danger">₺@urgent.Amount.ToString("N2")</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (Model.Dashboard.SalarySummary.UrgentSalaries.Count > 5)
+                                    {
+                                        <div class="list-group-item text-center py-2">
+                                            <small class="text-muted">
+                                                +@(Model.Dashboard.SalarySummary.UrgentSalaries.Count - 5) daha...
+                                            </small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Hızlı İşlemler -->
+                        <div class="text-center">
+                            <a href="/Finance/Salaries?filter=due" class="btn btn-danger me-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Vadesi Gelenleri Göster
+                            </a>
+                            <a href="/Finance/Salaries" class="btn btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>
+                                Tüm Maaşlar
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Tüm maaşlar güncel -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-success">Tüm maaşlar güncel!</h5>
+                            <p class="text-muted mb-3">Vadesi gelen maaş bulunmuyor.</p>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <h6 class="text-info mb-1">Bu Ay Ödenen</h6>
+                                        <h4 class="mb-0">₺@Model.Dashboard.SalarySummary.ThisMonthPaidSalaries.ToString("N2")</h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <h6 class="text-primary mb-1">Aktif Çalışan</h6>
+                                        <h4 class="mb-0">@Model.Dashboard.EmployeeSalaries.Count</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+    </abp-row>
+
     <!-- Bugünkü Rezervasyonlar -->
     <abp-row>
         <abp-column size="_12">

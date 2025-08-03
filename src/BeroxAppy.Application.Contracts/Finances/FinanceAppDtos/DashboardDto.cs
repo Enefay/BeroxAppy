@@ -1,4 +1,5 @@
 ﻿using BeroxAppy.Enums;
+using BeroxAppy.Finances.SalaryDtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,10 @@ namespace BeroxAppy.Finances.FinanceAppDtos
         public decimal TodayProfit { get; set; }
         public decimal PendingCommissions { get; set; }
         public List<EmployeeCommissionSummaryDto> EmployeeCommissions { get; set; }
+        public decimal PendingSalaries { get; set; }
+        public int DueSalaryCount { get; set; }
+        public List<EmployeeSalarySummaryDto> EmployeeSalaries { get; set; }
+        public SalaryDashboardSummaryDto SalarySummary { get; set; }
     }
 
     public class EmployeeCommissionSummaryDto
@@ -53,5 +58,23 @@ namespace BeroxAppy.Finances.FinanceAppDtos
         public DateTime Date { get; set; }
         public string Description { get; set; }
         public bool IsPaid { get; set; }
+    }
+
+    public class SalaryDashboardSummaryDto
+    {
+        public Dictionary<SalaryPeriodType, int> DueCountByPeriod { get; set; }
+        public decimal TotalDueAmount { get; set; }
+        public int TotalDueEmployees { get; set; }
+        public decimal ThisMonthPaidSalaries { get; set; }
+        public List<UrgentSalaryDto> UrgentSalaries { get; set; } // 7+ gün geciken
+    }
+
+    public class UrgentSalaryDto
+    {
+        public Guid EmployeeId { get; set; }
+        public string EmployeeName { get; set; }
+        public decimal Amount { get; set; }
+        public int DaysOverdue { get; set; }
+        public SalaryPeriodType Period { get; set; }
     }
 }
