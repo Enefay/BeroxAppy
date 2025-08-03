@@ -94,6 +94,16 @@
         calculateDistribution();
     });
 
+    // Bireysel ödeme tutarı değiştiğinde toplam tutarı güncelle
+    $(document).on('input', '.individual-payment-amount', function () {
+        updateTotalFromIndividual();
+    });
+
+    // Eşit dağıt butonu
+    $(document).on('click', '#DistributeEquallyButton', function () {
+        calculateDistribution();
+    });
+
     // Fonksiyonlar
     function applyFilters() {
         var showOnlyWithCommissions = $('#ShowOnlyWithCommissions').is(':checked');
@@ -168,8 +178,6 @@
 
         var isMultiple = selectedEmployees.length > 1;
 
-        console.log("totalAmount", totalAmount)
-
         // Modal başlığı
         $('#ModalTitle').text(isMultiple ?
             `Toplu Komisyon Ödemesi (${selectedEmployees.length} Çalışan)` :
@@ -193,8 +201,6 @@
         $('#SelectedEmployeesList').html(employeeListHtml);
 
         // Tutarları ayarla
-        //$('#TotalCommissionAmount').val('₺' + totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }));
-
         $('#TotalCommissionAmount').val(totalAmount.toLocaleString('tr-TR', {
             style: 'currency',
             currency: 'TRY',
@@ -210,7 +216,9 @@
         $('#PayButtonText').text(isMultiple ? 'Toplu Ödeme Yap' : 'Ödeme Yap');
 
         // Dağılımı hesapla
-        calculateDistribution();
+        if (isMultiple) {
+            calculateDistribution();
+        }
 
         $('#PayCommissionModal').modal('show');
     }
@@ -219,7 +227,6 @@
         if (selectedEmployees.length <= 1) return;
 
         var paymentAmount = parseFloat($('#PaymentAmount').val()) || 0;
-
         var totalCommission = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
 
         if (totalCommission === 0) return;
@@ -237,18 +244,73 @@
 
             distributionHtml += `
                 <tr>
-                    <td>${emp.employeeName}</td>
-                    <td>₺${emp.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                    <td><strong>₺${employeePayment.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <strong>${emp.employeeName}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="text-muted">₺${emp.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm" style="max-width: 150px;">
+                            <span class="input-group-text">₺</span>
+                            <input type="number" 
+                                   class="form-control individual-payment-amount" 
+                                   data-employee-id="${emp.employeeId}"
+                                   data-max-amount="${emp.amount}"
+                                   value="${employeePayment.toFixed(2)}" 
+                                   min="0" 
+                                   max="${emp.amount}" 
+                                   step="0.01">
+                        </div>
+                        <small class="text-muted">Max: ₺${emp.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</small>
+                    </td>
                 </tr>
             `;
         });
 
+        var tableHeader = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Ödeme Dağılımı</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="DistributeEquallyButton">
+                    <i class="fas fa-balance-scale me-1"></i>Eşit Dağıt
+                </button>
+            </div>
+        `;
+
+        $('#PaymentDistribution .mb-3').first().html(tableHeader);
         $('#DistributionTableBody').html(distributionHtml);
     }
 
-    function saveCommissionPayment() {
+    function updateTotalFromIndividual() {
+        var totalIndividual = 0;
 
+        $('.individual-payment-amount').each(function () {
+            var amount = parseFloat($(this).val()) || 0;
+            var maxAmount = parseFloat($(this).data('max-amount')) || 0;
+
+            // Maksimum tutarı aşmasını engelle
+            if (amount > maxAmount) {
+                $(this).val(maxAmount.toFixed(2));
+                amount = maxAmount;
+                abp.notify.warn(`${$(this).closest('tr').find('strong').text()} için maksimum tutar ₺${maxAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}'dir.`);
+            }
+
+            totalIndividual += amount;
+        });
+
+        // Toplam ödeme tutarını güncelle
+        $('#PaymentAmount').val(totalIndividual.toFixed(2));
+
+        // Toplam komisyon tutarından fazla olamaz kontrolü
+        var totalCommission = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
+        if (totalIndividual > totalCommission) {
+            abp.notify.warn('Toplam ödeme tutarı, toplam komisyon tutarından fazla olamaz!');
+        }
+    }
+
+    function saveCommissionPayment() {
         var paymentAmount = parseFloat($('#PaymentAmount').val().replace(',', '.'));
         var paymentMethod = parseInt($('#PaymentMethod').val());
 
@@ -257,25 +319,61 @@
             abp.notify.error('Lütfen geçerli bir ödeme tutarı girin');
             return;
         }
+
         var paymentMethodStr = $('#PaymentMethod').val();
         if (!paymentMethodStr) {
             abp.notify.error('Lütfen ödeme yöntemi seçin.');
             return;
         }
-     
 
-        var requestData = {
-            employeeCommissions: selectedEmployees.map(function (emp) {
+        // Toplu ödeme için bireysel tutarları al
+        var employeePayments = [];
+        if (selectedEmployees.length > 1) {
+            var totalIndividualPayments = 0;
+
+            $('.individual-payment-amount').each(function () {
+                var employeeId = $(this).data('employee-id');
+                var amount = parseFloat($(this).val()) || 0;
+                var maxAmount = parseFloat($(this).data('max-amount')) || 0;
+
+                if (amount > maxAmount) {
+                    abp.notify.error(`${$(this).closest('tr').find('strong').text()} için ödeme tutarı maksimum tutarı aşıyor!`);
+                    return false;
+                }
+
+                var employee = selectedEmployees.find(emp => emp.employeeId === employeeId);
+                if (employee && amount > 0) {
+                    employeePayments.push({
+                        employeeId: employeeId,
+                        employeeName: employee.employeeName,
+                        amount: amount
+                    });
+                    totalIndividualPayments += amount;
+                }
+            });
+
+            if (employeePayments.length === 0) {
+                abp.notify.error('En az bir çalışan için ödeme tutarı girilmelidir.');
+                return;
+            }
+
+            paymentAmount = totalIndividualPayments;
+        } else {
+            // Tekil ödeme
+            employeePayments = selectedEmployees.map(function (emp) {
                 return {
                     employeeId: emp.employeeId,
                     employeeName: emp.employeeName,
-                    amount: parseFloat(emp.amount.toString().replace(',', '.'))
+                    amount: Math.min(paymentAmount, parseFloat(emp.amount.toString().replace(',', '.')))
                 };
-            }),
-            paymentMethod: paymentMethod,
-            paymentAmount: parseFloat(paymentAmount)
-        };
+            });
+        }
 
+        var requestData = {
+            employeeCommissions: employeePayments,
+            paymentMethod: paymentMethod,
+            paymentAmount: paymentAmount
+        };
 
         abp.ui.setBusy($('#PayCommissionModal'));
 
@@ -454,13 +552,4 @@
 
     // Tooltip'leri aktifleştir
     $('[data-bs-toggle="tooltip"]').tooltip();
-
-    // Otomatik yenileme (isteğe bağlı - 5 dakikada bir)
-    /*
-    setInterval(function () {
-        if (!$('#PayCommissionModal').hasClass('show') && !$('#EmployeeDetailModal').hasClass('show')) {
-            refreshData();
-        }
-    }, 300000); // 5 dakika
-    */
 });
