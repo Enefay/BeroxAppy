@@ -105,9 +105,11 @@ namespace BeroxAppy.Services
         public async Task<PaymentDto> CreateAsync(CreatePaymentDto input)
         {
 
+            bool customCustomer = false;
             // Sistem müşterisi kontrolü -> eğer rezervasyon odemesi değilse müşteriye sistem musterisi atanacak...
-            if (input.CustomerId == Guid.Empty && !input.ReservationId.HasValue)
+            if (!input.CustomerId.HasValue && !input.ReservationId.HasValue)
             {
+                customCustomer = true;
                 input.CustomerId = await GetSystemCustomerIdAsync();
             }
 
@@ -154,8 +156,14 @@ namespace BeroxAppy.Services
                 await UpdateReservationPaymentStatusAsync(input.ReservationId.Value);
             }
 
-            // Müşteri borcunu güncelle
-            await UpdateCustomerDebtAsync(input.CustomerId.Value, input.Amount, true);
+
+            // Eğer sistem müteşrisi dğeil ise borcu guncelle
+            if (!customCustomer)
+            {
+                await UpdateCustomerDebtAsync(input.CustomerId.Value, input.Amount, true);
+            }
+
+       
 
             return await MapToPaymentDtoAsync(payment);
         }

@@ -78,6 +78,9 @@
 
     // Nakit işlem modalını aç
     function openCashTransactionModal(type, title, headerClass, icon) {
+        // Form elemanlarını temizle
+        $('#CashTransactionForm')[0].reset();
+
         $('#TransactionType').val(type);
         $('#TransactionModalTitle').html('<i class="fas fa-' + icon + ' me-2"></i>' + title);
         $('#TransactionModalHeader').removeClass().addClass('modal-header bg-' + headerClass + ' text-white');
@@ -90,10 +93,14 @@
         }
 
         $('#CashTransactionModal').modal('show');
-        $('#TransactionAmount').focus();
+
+        // Modal tamamen açıldıktan sonra focus yap
+        $('#CashTransactionModal').on('shown.bs.modal', function () {
+            $('#TransactionAmount').focus();
+        });
     }
 
-    // Nakit işlem kaydet
+    // Nakit işlem kaydet - EN ÖNEMLİ DÜZELTME BURADA
     $('#TransactionSaveButton').on('click', function () {
         var form = $('#CashTransactionForm');
 
@@ -104,38 +111,73 @@
 
         var type = $('#TransactionType').val();
         var amount = parseFloat($('#TransactionAmount').val());
-        var description = $('#TransactionDescription').val();
-        var note = $('#TransactionNote').val();
+        var description = $('#TransactionDescription').val().trim();
+        var note = $('#TransactionNote').val().trim();
 
-        if (amount <= 0) {
-            abp.notify.error('Tutar sıfırdan büyük olmalıdır!');
+        console.log('Form verileri:', { type, amount, description, note }); // Debug için
+
+        if (!type) {
+            abp.notify.error('İşlem tipi belirlenemedi!');
+            return;
+        }
+
+        if (amount <= 0 || isNaN(amount)) {
+            abp.notify.error('Geçerli bir tutar giriniz!');
+            $('#TransactionAmount').focus();
+            return;
+        }
+
+        if (!description || description.length < 3) {
+            abp.notify.error('Açıklama en az 3 karakter olmalıdır!');
+            $('#TransactionDescription').focus();
             return;
         }
 
         abp.ui.setBusy($('#CashTransactionModal'));
 
-        abp.ajax({
+        // AJAX isteğini düzelt
+        $.ajax({
             url: '/Finance/CashRegister?handler=CashTransaction',
             type: 'POST',
             data: {
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val(),
                 transactionType: type,
                 amount: amount,
                 description: description,
-                note: note
+                note: note || '' // Boşsa boş string gönder
             },
-            headers: {
-                'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+            success: function (result) {
+                console.log('Başarılı yanıt:', result); // Debug için
+
+                if (result && result.success) {
+                    abp.notify.success(result.message || 'İşlem başarıyla kaydedildi.');
+                    $('#CashTransactionModal').modal('hide');
+                    window.location.reload();
+                } else {
+                    abp.notify.error(result?.message || 'Bir hata oluştu!');
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('AJAX Hatası:', { xhr, status, error }); // Debug için
+
+                var errorMessage = 'İşlem sırasında bir hata oluştu!';
+
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMessage = xhr.responseJSON.error.message || errorMessage;
+                } else if (xhr.responseText) {
+                    try {
+                        var errorData = JSON.parse(xhr.responseText);
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        // JSON parse hatası, default mesajı kullan
+                    }
+                }
+
+                abp.notify.error(errorMessage);
+            },
+            complete: function () {
+                abp.ui.clearBusy($('#CashTransactionModal'));
             }
-        }).done(function (result) {
-            if (result.success) {
-                abp.notify.success(result.message);
-                $('#CashTransactionModal').modal('hide');
-                window.location.reload();
-            } else {
-                abp.notify.error(result.message);
-            }
-        }).always(function () {
-            abp.ui.clearBusy($('#CashTransactionModal'));
         });
     });
 
@@ -172,26 +214,33 @@
                 if (isConfirmed) {
                     abp.ui.setBusy($('#CloseCashModal'));
 
-                    abp.ajax({
+                    $.ajax({
                         url: '/Finance/CashRegister?handler=CloseCash',
                         type: 'POST',
                         data: {
+                            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val(),
                             actualClosingBalance: actualBalance,
-                            note: note
+                            note: note || ''
                         },
-                        headers: {
-                            'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                        success: function (result) {
+                            if (result && result.success) {
+                                abp.notify.success(result.message);
+                                $('#CloseCashModal').modal('hide');
+                                window.location.reload();
+                            } else {
+                                abp.notify.error(result?.message || 'Bir hata oluştu!');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            var errorMessage = 'İşlem sırasında bir hata oluştu!';
+                            if (xhr.responseJSON && xhr.responseJSON.error) {
+                                errorMessage = xhr.responseJSON.error.message || errorMessage;
+                            }
+                            abp.notify.error(errorMessage);
+                        },
+                        complete: function () {
+                            abp.ui.clearBusy($('#CloseCashModal'));
                         }
-                    }).done(function (result) {
-                        if (result.success) {
-                            abp.notify.success(result.message);
-                            $('#CloseCashModal').modal('hide');
-                            window.location.reload();
-                        } else {
-                            abp.notify.error(result.message);
-                        }
-                    }).always(function () {
-                        abp.ui.clearBusy($('#CloseCashModal'));
                     });
                 }
             }
@@ -219,6 +268,8 @@
     // Modal temizlik işlemleri
     $('#CashTransactionModal').on('hidden.bs.modal', function () {
         $('#CashTransactionForm')[0].reset();
+        // Event listener'ı temizle
+        $(this).off('shown.bs.modal');
     });
 
     $('#CloseCashModal').on('hidden.bs.modal', function () {

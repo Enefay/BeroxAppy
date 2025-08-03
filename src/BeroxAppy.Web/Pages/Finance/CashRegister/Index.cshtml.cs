@@ -33,7 +33,7 @@ namespace BeroxAppy.Web.Pages.Finance.CashRegister
             await LoadCashRegisterDataAsync();
         }
 
-        public async Task<IActionResult> OnPostCloseCashAsync(decimal actualClosingBalance, string note = null)
+        public async Task<IActionResult> OnPostCloseCashAsync([FromForm] decimal actualClosingBalance, [FromForm] string note = null)
         {
             try
             {
@@ -97,16 +97,30 @@ namespace BeroxAppy.Web.Pages.Finance.CashRegister
         }
 
         public async Task<IActionResult> OnPostCashTransactionAsync(
-            string transactionType,
-            decimal amount,
-            string description,
-            string note = null)
+            [FromForm] string transactionType,
+            [FromForm] decimal amount,
+            [FromForm] string description,
+            [FromForm] string note = null)
         {
             try
             {
+                // Debug için log
+                Console.WriteLine($"CashTransaction çaðrýldý: Type={transactionType}, Amount={amount}, Description={description}, Note={note}");
+
+                // Validation
+                if (string.IsNullOrWhiteSpace(transactionType))
+                {
+                    return new JsonResult(new { success = false, message = "Ýþlem tipi belirtilmedi!" });
+                }
+
                 if (amount <= 0)
                 {
                     return new JsonResult(new { success = false, message = "Tutar sýfýrdan büyük olmalýdýr!" });
+                }
+
+                if (string.IsNullOrWhiteSpace(description))
+                {
+                    return new JsonResult(new { success = false, message = "Açýklama giriniz!" });
                 }
 
                 var cashRegister = await GetCashRegisterForDateAsync(SelectedDate);
@@ -118,12 +132,12 @@ namespace BeroxAppy.Web.Pages.Finance.CashRegister
 
                 var isRefund = transactionType.ToLower() == "out";
                 var fullDescription = string.IsNullOrWhiteSpace(note)
-                    ? description
-                    : $"{description} - {note}";
+                    ? description.Trim()
+                    : $"{description.Trim()} - {note.Trim()}";
 
                 var paymentDto = new CreatePaymentDto
                 {
-                    CustomerId = null,
+                    CustomerId = null, // Sistem müþterisi otomatik atanacak
                     ReservationId = null, // Rezervasyon dýþý iþlem
                     Amount = amount,
                     PaymentMethod = PaymentMethod.Cash,
@@ -132,16 +146,18 @@ namespace BeroxAppy.Web.Pages.Finance.CashRegister
                     IsRefund = isRefund
                 };
 
-                await _paymentAppService.CreateAsync(paymentDto);
+                var result = await _paymentAppService.CreateAsync(paymentDto);
 
                 return new JsonResult(new
                 {
                     success = true,
-                    message = $"Nakit {(isRefund ? "çýkýþ" : "giriþ")} iþlemi kaydedildi."
+                    message = $"Nakit {(isRefund ? "çýkýþ" : "giriþ")} iþlemi baþarýyla kaydedildi.",
+                    data = result
                 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"CashTransaction hatasý: {ex.Message}");
                 return new JsonResult(new { success = false, message = ex.Message });
             }
         }
@@ -242,6 +258,5 @@ namespace BeroxAppy.Web.Pages.Finance.CashRegister
                 CashPayments = new List<PaymentDto>();
             }
         }
-     
     }
 }
