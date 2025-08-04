@@ -5,16 +5,13 @@
 @model BeroxAppy.Web.Pages.Reservations.IndexModel
 @inject IStringLocalizer<BeroxAppyResource> L
 @section styles {
-        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
-        <link href='https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.10/index.global.min.css' rel='stylesheet' />
-        <link href="~/pages/reservations/index.css" rel="stylesheet" />
+    <link href="~/pages/reservations/index.css" rel="stylesheet" />
 }
 
 @section scripts {
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.10/index.global.min.js'></script>
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/tr.global.min.js'></script>
-        <script src="~/pages/reservations/index.js" asp-append-version="true"></script>
+    <script src="~/libs/full-calendar/premium-index.global.min.js"></script>
+    <script src="~/libs/full-calendar/standart-index.global.min.js"></script>
+    <script src="~/pages/reservations/index.js" asp-append-version="true"></script>
 }
 
 <div class="container-fluid">
@@ -51,7 +48,7 @@
                             <option value="">Tüm Çalışanlar</option>
                             @foreach (var employee in Model.Employees)
                             {
-                                    <option value="@employee.Value">@employee.Text</option>
+                                <option value="@employee.Value">@employee.Text</option>
                             }
                         </select>
                     </div>
