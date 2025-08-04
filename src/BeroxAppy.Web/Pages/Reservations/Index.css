@@ -1,173 +1,332 @@
-﻿/* Rezervasyon Sayfası Stilleri */
+﻿/* Rezervasyon Sayfası - Modern Stil */
 
+/* Ana sayfa düzeni */
 .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 25px;
+    padding: 20px 0;
+    border-bottom: 3px solid linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    position: relative;
 }
+
+    .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 2px;
+    }
+
+    .page-header h2 {
+        color: #2c3e50;
+        font-weight: 700;
+        margin: 0;
+        font-size: 1.8rem;
+    }
 
 .page-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-/* Takvim özelleştirmeleri */
+    .page-actions .btn {
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+        .page-actions .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    border: none;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #3498db 0%, #85c1e9 100%);
+    border: none;
+}
+
+/* Takvim container */
 #calendar {
     background: #fff;
-    padding: 10px;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
 }
 
-.fc-event {
-    cursor: pointer;
-    border: none;
-    padding: 2px 5px;
-    font-size: 0.85rem;
+/* FullCalendar özelleştirmeleri */
+.fc-toolbar {
+    margin-bottom: 20px !important;
 }
 
-    .fc-event:hover {
-        opacity: 0.8;
+.fc-toolbar-chunk .fc-button-group .fc-button {
+    border-radius: 6px !important;
+    margin: 0 2px !important;
+    padding: 8px 12px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+.fc-button-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: none !important;
+}
+
+    .fc-button-primary:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+        transform: translateY(-1px) !important;
     }
 
 .fc-timegrid-slot {
-    height: 40px;
+    height: 45px;
+    border-color: #f1f3f4;
 }
 
 .fc-timegrid-slot-label {
     font-size: 0.85rem;
+    color: #5f6368;
+    font-weight: 500;
 }
+
+.fc-col-header-cell {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-color: #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Event stilleri - Soft renkler */
+.fc-event {
+    cursor: pointer;
+    border: none !important;
+    padding: 4px 8px !important;
+    font-size: 0.85rem !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+    .fc-event:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Event color classes - Soft background colors */
+    .fc-event.walk-in {
+        background: rgba(108, 117, 125, 0.15) !important;
+        color: #495057 !important;
+        border-left: 4px solid #6c757d !important;
+    }
+
+    .fc-event.pending {
+        background: rgba(255, 193, 7, 0.15) !important;
+        color: #856404 !important;
+        border-left: 4px solid #ffc107 !important;
+    }
+
+    .fc-event.arrived {
+        background: rgba(40, 167, 69, 0.15) !important;
+        color: #155724 !important;
+        border-left: 4px solid #28a745 !important;
+    }
+
+    .fc-event.no-show {
+        background: rgba(220, 53, 69, 0.15) !important;
+        color: #721c24 !important;
+        border-left: 4px solid #dc3545 !important;
+    }
+
+    .fc-event.confirmed {
+        background: rgba(0, 123, 255, 0.15) !important;
+        color: #004085 !important;
+        border-left: 4px solid #007bff !important;
+    }
+
+    .fc-event.cancelled {
+        background: rgba(134, 142, 150, 0.15) !important;
+        color: #495057 !important;
+        border-left: 4px solid #868e96 !important;
+        text-decoration: line-through;
+    }
 
 /* Sol panel kartları */
 .card {
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     border: none;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
 
+    .card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+
 .card-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-    padding: 10px 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
 }
 
 .card-title {
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    color: #333;
+    color: #2c3e50;
+    margin: 0;
 }
 
-/* Hizmet satırları */
-.service-row {
-    background-color: #f8f9fa;
-    transition: all 0.3s ease;
-}
-
-    .service-row:hover {
-        background-color: #e9ecef;
-    }
-
-.remove-service-btn {
-    width: 100%;
-}
-
-/* Yaklaşan rezervasyonlar listesi */
-#upcomingReservations .list-group-item {
-    border: none;
-    border-bottom: 1px solid #e9ecef;
-}
-
-    #upcomingReservations .list-group-item:last-child {
-        border-bottom: none;
-    }
-
-    #upcomingReservations .list-group-item:hover {
-        background-color: #f8f9fa;
-    }
-
-/* Modal özelleştirmeleri */
-.modal-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.modal-title {
-    font-weight: 600;
+.card-body {
+    padding: 20px;
 }
 
 /* Form elemanları */
 .form-label {
-    font-weight: 500;
+    font-weight: 600;
     color: #495057;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
 }
 
-.form-control:focus,
-.form-select:focus {
-    border-color: #80bdff;
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
 }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        outline: none;
+    }
 
 /* Günlük özet */
 #dailySummary {
     font-size: 0.9rem;
 }
 
-    #dailySummary hr {
-        margin: 10px 0;
+    #dailySummary .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f3f4;
     }
 
-/* Responsive düzenlemeler */
-@media (max-width: 768px) {
-    .page-header {
-        flex-direction: column;
-        align-items: flex-start;
+        #dailySummary .summary-item:last-child {
+            border-bottom: none;
+        }
+
+    #dailySummary .summary-value {
+        font-weight: 600;
+        color: #2c3e50;
     }
 
-    .page-actions {
-        margin-top: 10px;
-        flex-wrap: wrap;
+/* Yaklaşan rezervasyonlar */
+#upcomingReservations .reservation-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f3f4;
+    transition: all 0.2s ease;
+}
+
+    #upcomingReservations .reservation-item:hover {
+        background-color: rgba(102, 126, 234, 0.05);
+        border-radius: 6px;
+        padding-left: 8px;
+        padding-right: 8px;
     }
 
-    .service-row .row {
-        margin-bottom: 10px;
+    #upcomingReservations .reservation-item:last-child {
+        border-bottom: none;
     }
 
-    .service-row .col-md-1 {
-        margin-top: 10px;
-    }
+.reservation-time {
+    font-weight: 600;
+    color: #667eea;
+    min-width: 60px;
 }
 
-/* Takvim event renkleri */
-.fc-event.walk-in {
-    background-color: #6c757d !important;
-    border-color: #6c757d !important;
+.reservation-details {
+    flex: 1;
+    margin-left: 12px;
 }
 
-.fc-event.pending {
-    background-color: #ffc107 !important;
-    border-color: #ffc107 !important;
-    color: #000;
+.reservation-customer {
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 2px;
 }
 
-.fc-event.arrived {
-    background-color: #28a745 !important;
-    border-color: #28a745 !important;
+.reservation-service {
+    font-size: 0.8rem;
+    color: #6c757d;
 }
 
-.fc-event.no-show {
-    background-color: #dc3545 !important;
-    border-color: #dc3545 !important;
+/* Status badges */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-/* Loading spinner */
+.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #856404;
+}
+
+.status-confirmed {
+    background: rgba(0, 123, 255, 0.2);
+    color: #004085;
+}
+
+.status-arrived {
+    background: rgba(40, 167, 69, 0.2);
+    color: #155724;
+}
+
+.status-no-show {
+    background: rgba(220, 53, 69, 0.2);
+    color: #721c24;
+}
+
+.status-cancelled {
+    background: rgba(134, 142, 150, 0.2);
+    color: #495057;
+}
+
+/* Loading animasyonu */
 .loading-spinner {
     display: inline-block;
-    width: 1rem;
-    height: 1rem;
+    width: 20px;
+    height: 20px;
     border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
+    border-top: 2px solid #667eea;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -182,21 +341,98 @@
     }
 }
 
-/* Müsait olmayan saat slotları */
-.fc-timegrid-slot.fc-timegrid-slot-minor {
-    border-color: #f0f0f0;
+/* Hover efektleri */
+.hover-lift {
+    transition: all 0.2s ease;
 }
 
-.time-slot-unavailable {
-    background-color: #f8d7da;
-    opacity: 0.5;
+    .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+/* Modal özelleştirmeleri */
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
-/* Rezervasyon detay tablosu */
-#reservationDetailContent table {
-    font-size: 0.9rem;
+.modal-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 12px 12px 0 0;
+    padding: 20px;
 }
 
-#reservationDetailContent .badge {
-    font-size: 0.85rem;
+.modal-title {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+/* Responsive düzenlemeler */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .page-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .fc-toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #calendar {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 576px) {
+    .page-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+        .page-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+}
+
+/* Özel scroll bar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 3px;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    }
+
+/* Geçiş animasyonları */
+* {
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
