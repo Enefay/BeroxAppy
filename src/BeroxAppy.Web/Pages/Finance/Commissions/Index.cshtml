@@ -17,20 +17,38 @@
 <div class="container-fluid">
     <!-- Sayfa Başlığı -->
     <abp-row class="mb-3">
-        <abp-column size="_8">
+        <!-- Desktop ve Tablet görünüm -->
+        <abp-column size="_8" class="d-none d-md-block">
             <h1 class="mb-0">Komisyon Ödemeleri</h1>
             <small class="text-muted">Çalışanların bekleyen komisyonlarını yönetin</small>
         </abp-column>
-        <abp-column size="_4" class="text-end">
+        <abp-column size="_4" class="text-end d-none d-md-block">
             <abp-button id="RefreshButton" text="Yenile" icon="refresh" button-type="Primary" />
             <abp-button id="PaySelectedButton" text="Seçilenleri Öde" icon="money-bill" button-type="Success" disabled="true" />
+        </abp-column>
+
+        <!-- Mobil görünüm -->
+        <abp-column size="_12" class="d-block d-md-none">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <h3 class="mb-0">Komisyon Ödemeleri</h3>
+                    <small class="text-muted">Çalışanların bekleyen komisyonlarını yönetin</small>
+                </div>
+            </div>
+            <div class="d-grid gap-2 d-md-none">
+                <div class="btn-group" role="group">
+                    <abp-button id="RefreshButtonMobile" text="Yenile" icon="refresh" button-type="Primary" size="Small" class="flex-fill" />
+                    <abp-button id="PaySelectedButtonMobile" text="Seçilenleri Öde" icon="money-bill" button-type="Success" size="Small" disabled="true" class="flex-fill" />
+                </div>
+            </div>
         </abp-column>
     </abp-row>
 
     <!-- Özet Kartları -->
     <abp-row class="mb-4">
-        <abp-column size="_4">
-            <abp-card class="border-start border-warning border-4">
+        <!-- Desktop görünüm (3 kart yan yana) -->
+        <abp-column size="_4" class="d-none d-lg-block">
+            <abp-card class="border-start border-warning border-4 h-100">
                 <abp-card-body>
                     <div class="d-flex justify-content-between">
                         <div>
@@ -44,8 +62,8 @@
                 </abp-card-body>
             </abp-card>
         </abp-column>
-        <abp-column size="_4">
-            <abp-card class="border-start border-info border-4">
+        <abp-column size="_4" class="d-none d-lg-block">
+            <abp-card class="border-start border-info border-4 h-100">
                 <abp-card-body>
                     <div class="d-flex justify-content-between">
                         <div>
@@ -59,7 +77,54 @@
                 </abp-card-body>
             </abp-card>
         </abp-column>
-        <abp-column size="_4">
+        <abp-column size="_4" class="d-none d-lg-block">
+            <abp-card class="border-start border-success border-4 h-100">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-success mb-1">Bu Ay Ödenen</h6>
+                            <h4 class="mb-0">₺@Model.Summary.ThisMonthPaidCommissions.ToString("N2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+
+        <!-- Tablet görünüm (2 kart üstte, 1 kart altta) -->
+        <abp-column size="_6" class="d-none d-md-block d-lg-none mb-3">
+            <abp-card class="border-start border-warning border-4 h-100">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-warning mb-1">Toplam Bekleyen</h6>
+                            <h4 class="mb-0">₺@Model.Summary.TotalPendingCommissions.ToString("N2")</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_6" class="d-none d-md-block d-lg-none mb-3">
+            <abp-card class="border-start border-info border-4 h-100">
+                <abp-card-body>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-info mb-1">Aktif Çalışan</h6>
+                            <h4 class="mb-0">@Model.Summary.ActiveEmployeeCount</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+        <abp-column size="_12" class="d-none d-md-block d-lg-none mb-3">
             <abp-card class="border-start border-success border-4">
                 <abp-card-body>
                     <div class="d-flex justify-content-between">
@@ -74,6 +139,55 @@
                 </abp-card-body>
             </abp-card>
         </abp-column>
+
+        <!-- Mobil görünüm (dikey stack) -->
+        <abp-column size="_12" class="d-block d-md-none mb-3">
+            <abp-card class="border-start border-warning border-4">
+                <abp-card-body class="py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-warning mb-1">Toplam Bekleyen</h6>
+                            <h5 class="mb-0">₺@Model.Summary.TotalPendingCommissions.ToString("N2")</h5>
+                        </div>
+                        <div>
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+
+        <abp-column size="_6" class="d-block d-md-none mb-3">
+            <abp-card class="border-start border-info border-4 h-100">
+                <abp-card-body class="py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-info mb-1">Aktif Çalışan</h6>
+                            <h5 class="mb-0">@Model.Summary.ActiveEmployeeCount</h5>
+                        </div>
+                        <div>
+                            <i class="fas fa-users fa-lg text-info"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
+
+        <abp-column size="_6" class="d-block d-md-none mb-3">
+            <abp-card class="border-start border-success border-4 h-100">
+                <abp-card-body class="py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-success mb-1">Bu Ay Ödenen</h6>
+                            <h5 class="mb-0">₺@Model.Summary.ThisMonthPaidCommissions.ToString("N2")</h5>
+                        </div>
+                        <div>
+                            <i class="fas fa-check-circle fa-lg text-success"></i>
+                        </div>
+                    </div>
+                </abp-card-body>
+            </abp-card>
+        </abp-column>
     </abp-row>
 
     <!-- Filtreleme -->
@@ -81,7 +195,8 @@
         <abp-column size="_12">
             <abp-card>
                 <abp-card-body class="py-2">
-                    <div class="d-flex gap-3 align-items-center">
+                    <!-- Desktop görünüm -->
+                    <div class="d-none d-lg-flex gap-3 align-items-center">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="ShowOnlyWithCommissions" checked>
                             <label class="form-check-label" for="ShowOnlyWithCommissions">
@@ -97,6 +212,57 @@
                             <input type="text" id="EmployeeNameFilter" class="form-control" placeholder="Çalışan adı ara..." style="width: 200px;">
                         </div>
                         <abp-button id="ApplyFiltersButton" text="Filtrele" icon="filter" button-type="Outline_Primary" size="Small" />
+                    </div>
+
+                    <!-- Tablet görünüm -->
+                    <div class="d-none d-md-block d-lg-none">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="ShowOnlyWithCommissionsTablet" checked>
+                                    <label class="form-check-label" for="ShowOnlyWithCommissionsTablet">
+                                        Sadece komisyonu olanları göster
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label mb-1">Min. Tutar:</label>
+                                <input type="number" id="MinAmountFilterTablet" class="form-control form-control-sm" min="0" step="0.01" placeholder="₺0.00">
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label mb-1">Çalışan Ara:</label>
+                                <input type="text" id="EmployeeNameFilterTablet" class="form-control form-control-sm" placeholder="Çalışan adı...">
+                            </div>
+                            <div class="col-3 d-flex align-items-end">
+                                <abp-button id="ApplyFiltersButtonTablet" text="Filtrele" icon="filter" button-type="Outline_Primary" size="Small" class="w-100" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobil görünüm -->
+                    <div class="d-block d-md-none">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="ShowOnlyWithCommissionsMobile" checked>
+                                    <label class="form-check-label" for="ShowOnlyWithCommissionsMobile">
+                                        Sadece komisyonu olanları göster
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label mb-1 small">Min. Tutar:</label>
+                                <input type="number" id="MinAmountFilterMobile" class="form-control form-control-sm" min="0" step="0.01" placeholder="₺0.00">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label mb-1 small">Filtrele:</label>
+                                <abp-button id="ApplyFiltersButtonMobile" text="Filtrele" icon="filter" button-type="Outline_Primary" size="Small" class="w-100" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Çalışan Ara:</label>
+                                <input type="text" id="EmployeeNameFilterMobile" class="form-control form-control-sm" placeholder="Çalışan adı ara...">
+                            </div>
+                        </div>
                     </div>
                 </abp-card-body>
             </abp-card>
