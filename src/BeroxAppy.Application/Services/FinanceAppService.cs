@@ -434,6 +434,8 @@ namespace BeroxAppy.Services
                              CalculatePeriodStart(employee.SalaryPeriod, employee.PaymentDay);
             var periodEnd = CalculatePeriodEnd(periodStart, employee.SalaryPeriod);
 
+            var isPartial = amount < employee.CurrentPeriodCommission + amount; // Ödenen, toplamdan azsa kısmi
+
             // Ödeme kaydı oluştur
             var payment = new EmployeePayment
             {
@@ -444,8 +446,11 @@ namespace BeroxAppy.Services
                 TotalAmount = amount,
                 PaymentDate = DateTime.Now,
                 PaymentMethod = paymentMethod,
-                Note = note ?? $"Maaş ödemesi ({GetSalaryPeriodDisplay(employee.SalaryPeriod)}) - {DateTime.Now:dd.MM.yyyy}",
-                PeriodStart = periodStart,
+                Note = string.IsNullOrWhiteSpace(note)
+                 ? (isPartial
+                     ? $"Kısmi maaş ödemesi - {DateTime.Now:dd.MM.yyyy}"
+                     : $"Maaş ödemesi - {DateTime.Now:dd.MM.yyyy}")
+                 : note,
                 PeriodEnd = periodEnd,
                 PaymentType = PaymentType.Salary
             };

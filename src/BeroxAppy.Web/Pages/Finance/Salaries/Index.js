@@ -76,7 +76,7 @@
     // Detay görüntüleme
     $(document).on('click', '.view-details-btn', function () {
         var employeeId = $(this).data('employee-id');
-        showEmployeeSalaryDetail(employeeId);
+        showEmployeeDetail(employeeId);
     });
 
     // Ödeme modalı kaydet
@@ -91,6 +91,16 @@
 
     // Ödeme tutarı değiştiğinde dağılımı hesapla
     $('#PaymentAmount').on('input', function () {
+        calculateDistribution();
+    });
+
+    // Bireysel ödeme tutarı değiştiğinde toplam tutarı güncelle
+    $(document).on('input', '.individual-payment-amount', function () {
+        updateTotalFromIndividual();
+    });
+
+    // Eşit dağıt butonu
+    $(document).on('click', '#DistributeEquallyButton', function () {
         calculateDistribution();
     });
 
@@ -160,7 +170,12 @@
     function showPaymentModal() {
         if (selectedEmployees.length === 0) return;
 
-        var totalAmount = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
+        var totalAmount = selectedEmployees.reduce((sum, emp) => {
+            return sum + Number(
+                String(emp.amount).replace('.', '').replace(',', '.')
+            );
+        }, 0);
+
         var isMultiple = selectedEmployees.length > 1;
 
         // Modal başlığı
@@ -196,7 +211,9 @@
         $('#PayButtonText').text(isMultiple ? 'Toplu Ödeme Yap' : 'Ödeme Yap');
 
         // Dağılımı hesapla
-        calculateDistribution();
+        if (isMultiple) {
+            calculateDistribution();
+        }
 
         $('#PaySalaryModal').modal('show');
     }
@@ -222,60 +239,140 @@
 
             distributionHtml += `
                 <tr>
-                    <td>${emp.employeeName}</td>
-                    <td>₺${emp.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                    <td><strong>₺${employeePayment.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <strong>${emp.employeeName}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="text-muted">₺${emp.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm" style="max-width: 150px;">
+                            <span class="input-group-text">₺</span>
+                            <input type="number" 
+                                   class="form-control individual-payment-amount" 
+                                   data-employee-id="${emp.employeeId}"
+                                   data-max-amount="${emp.amount}"
+                                   value="${employeePayment.toFixed(2)}" 
+                                   min="0" 
+                                   max="${emp.amount}" 
+                                   step="0.01">
+                        </div>
+                        <small class="text-muted">Max: ₺${emp.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</small>
+                    </td>
                 </tr>
             `;
         });
 
+        var tableHeader = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Ödeme Dağılımı</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="DistributeEquallyButton">
+                    <i class="fas fa-balance-scale me-1"></i>Eşit Dağıt
+                </button>
+            </div>
+        `;
+
+        $('#PaymentDistribution .mb-3').first().html(tableHeader);
         $('#DistributionTableBody').html(distributionHtml);
     }
 
-    function saveSalaryPayment() {
-        var form = $('#PaySalaryForm');
+    function updateTotalFromIndividual() {
+        var totalIndividual = 0;
 
-        if (!form[0].checkValidity()) {
-            form[0].reportValidity();
-            return;
-        }
+        $('.individual-payment-amount').each(function () {
+            var amount = parseFloat($(this).val()) || 0;
+            var maxAmount = parseFloat($(this).data('max-amount')) || 0;
 
-        var paymentAmount = parseFloat($('#PaymentAmount').val());
-        var paymentMethod = parseInt($('#PaymentMethod').val());
-        var note = $('#PaymentNote').val();
+            // Maksimum tutarı aşmasını engelle
+            if (amount > maxAmount) {
+                $(this).val(maxAmount.toFixed(2));
+                amount = maxAmount;
+                abp.notify.warn(`${$(this).closest('tr').find('strong').text()} için maksimum tutar ₺${maxAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}'dir.`);
+            }
 
-        if (paymentAmount <= 0 || isNaN(paymentMethod)) {
-            abp.notify.error('Lütfen tüm gerekli alanları doldurun.');
-            return;
-        }
-
-        // Ödeme dağılımını hesapla
-        var totalSalary = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
-        var employeeSalaries = [];
-        var distributedTotal = 0;
-
-        selectedEmployees.forEach(function (emp, index) {
-            var ratio = emp.amount / totalSalary;
-            var employeePayment = index === selectedEmployees.length - 1 ?
-                paymentAmount - distributedTotal :
-                Math.round(paymentAmount * ratio * 100) / 100;
-
-            distributedTotal += employeePayment;
-
-            employeeSalaries.push({
-                employeeId: emp.employeeId,
-                employeeName: emp.employeeName,
-                amount: employeePayment
-            });
+            totalIndividual += amount;
         });
+
+        // Toplam ödeme tutarını güncelle
+        $('#PaymentAmount').val(totalIndividual.toFixed(2));
+
+        // Toplam maaş tutarından fazla olamaz kontrolü
+        var totalSalary = selectedEmployees.reduce((sum, emp) => sum + emp.amount, 0);
+        if (totalIndividual > totalSalary) {
+            abp.notify.warn('Toplam ödeme tutarı, toplam maaş tutarından fazla olamaz!');
+        }
+    }
+
+    function saveSalaryPayment() {
+        var paymentAmount = parseFloat($('#PaymentAmount').val().replace(',', '.'));
+        var paymentMethod = parseInt($('#PaymentMethod').val());
+
+        // Validasyon
+        if (isNaN(paymentAmount)) {
+            abp.notify.error('Lütfen geçerli bir ödeme tutarı girin');
+            return;
+        }
+
+        var paymentMethodStr = $('#PaymentMethod').val();
+        if (!paymentMethodStr) {
+            abp.notify.error('Lütfen ödeme yöntemi seçin.');
+            return;
+        }
+
+        // Toplu ödeme için bireysel tutarları al
+        var employeeSalaries = [];
+        if (selectedEmployees.length > 1) {
+            var totalIndividualPayments = 0;
+
+            $('.individual-payment-amount').each(function () {
+                var employeeId = $(this).data('employee-id');
+                var amount = parseFloat($(this).val()) || 0;
+                var maxAmount = parseFloat($(this).data('max-amount')) || 0;
+
+                if (amount > maxAmount) {
+                    abp.notify.error(`${$(this).closest('tr').find('strong').text()} için ödeme tutarı maksimum tutarı aşıyor!`);
+                    return false;
+                }
+
+                var employee = selectedEmployees.find(emp => emp.employeeId === employeeId);
+                if (employee && amount > 0) {
+                    employeeSalaries.push({
+                        employeeId: employeeId,
+                        employeeName: employee.employeeName,
+                        amount: amount
+                    });
+                    totalIndividualPayments += amount;
+                }
+            });
+
+            if (employeeSalaries.length === 0) {
+                abp.notify.error('En az bir çalışan için ödeme tutarı girilmelidir.');
+                return;
+            }
+
+            paymentAmount = totalIndividualPayments;
+        } else {
+            // Tekil ödeme
+            employeeSalaries = selectedEmployees.map(function (emp) {
+                return {
+                    employeeId: emp.employeeId,
+                    employeeName: emp.employeeName,
+                    amount: Math.min(paymentAmount, parseFloat(emp.amount.toString().replace(',', '.')))
+                };
+            });
+        }
 
         var requestData = {
             employeeSalaries: employeeSalaries,
             paymentMethod: paymentMethod,
-            note: note
+            paymentAmount: paymentAmount
         };
 
         abp.ui.setBusy($('#PaySalaryModal'));
+
+        console.log("Gönderilen veri:", requestData);
 
         abp.ajax({
             url: '/Finance/Salaries/Index?handler=PaySalary',
@@ -300,18 +397,20 @@
         });
     }
 
-    function showEmployeeSalaryDetail(employeeId) {
-        abp.ui.setBusy($('#EmployeeSalaryDetailModal'));
+    function showEmployeeDetail(employeeId) {
+        abp.ui.setBusy($('#EmployeeDetailModal'));
 
         abp.ajax({
-            url: '/Finance/Salaries/Index?handler=EmployeeSalaryDetail',
+            url: '/Finance/Salaries/Index?handler=EmployeeDetail',
             type: 'GET',
             data: { employeeId: employeeId }
         }).done(function (result) {
             if (result.success) {
                 var data = result.data;
+                var performance = data.performance;
+                var recentPayments = data.recentPayments;
 
-                $('#DetailEmployeeName').text(data.employeeName);
+                $('#DetailEmployeeName').text(performance.employeeName);
 
                 var contentHtml = `
                     <div class="row mb-4">
@@ -320,25 +419,25 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-success mb-1">₺${data.totalSalaryPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
+                                        <h5 class="text-success mb-1">₺${performance.totalSalaryPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
                                         <small class="text-muted">Ödenen Maaş</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-info mb-1">₺${data.totalCommissionPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
+                                        <h5 class="text-info mb-1">₺${performance.totalCommissionPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
                                         <small class="text-muted">Ödenen Komisyon</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-warning mb-1">₺${data.totalBonusPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
+                                        <h5 class="text-warning mb-1">₺${performance.totalBonusPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</h5>
                                         <small class="text-muted">Bonus/Kesinti</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="text-center p-3 bg-light rounded">
-                                        <h5 class="text-primary mb-1">${data.paymentCount}</h5>
+                                        <h5 class="text-primary mb-1">${performance.paymentCount}</h5>
                                         <small class="text-muted">Ödeme Sayısı</small>
                                     </div>
                                 </div>
@@ -349,29 +448,22 @@
                     <div class="row">
                         <div class="col-md-12">
                             <h6 class="fw-bold mb-3">Son Maaş Ödemeleri</h6>
-                            ${data.paymentHistory && data.paymentHistory.length > 0 ? `
+                            ${recentPayments.length > 0 ? `
                                 <div class="table-responsive">
                                     <table class="table table-sm">
                                         <thead>
                                             <tr>
-                                                <th>Dönem</th>
-                                                <th>Ödeme Tarihi</th>
+                                                <th>Tarih</th>
                                                 <th>Tutar</th>
                                                 <th>Yöntem</th>
                                                 <th>Not</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            ${data.paymentHistory.map(payment => `
+                                            ${recentPayments.map(payment => `
                                                 <tr>
-                                                    <td>
-                                                        <small>
-                                                            ${new Date(payment.periodStart).toLocaleDateString('tr-TR')} - 
-                                                            ${new Date(payment.periodEnd).toLocaleDateString('tr-TR')}
-                                                        </small>
-                                                    </td>
                                                     <td>${new Date(payment.paymentDate).toLocaleDateString('tr-TR')}</td>
-                                                    <td><strong>₺${payment.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></td>
+                                                    <td><strong>₺${payment.salaryAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></td>
                                                     <td><span class="badge bg-secondary">${payment.paymentMethodDisplay}</span></td>
                                                     <td><small>${payment.note || '-'}</small></td>
                                                 </tr>
@@ -389,15 +481,15 @@
                     </div>
                 `;
 
-                $('#EmployeeSalaryDetailContent').html(contentHtml);
-                $('#EmployeeSalaryDetailModal').modal('show');
+                $('#EmployeeDetailContent').html(contentHtml);
+                $('#EmployeeDetailModal').modal('show');
             } else {
                 abp.notify.error(result.message);
             }
         }).fail(function () {
             abp.notify.error('Çalışan detayları yüklenirken hata oluştu.');
         }).always(function () {
-            abp.ui.clearBusy($('#EmployeeSalaryDetailModal'));
+            abp.ui.clearBusy($('#EmployeeDetailModal'));
         });
     }
 

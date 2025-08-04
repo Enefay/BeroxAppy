@@ -12,6 +12,7 @@ using Volo.Abp.Domain.Repositories;
 using BeroxAppy.Finance;
 using BeroxAppy.Finances.SalaryDtos;
 using BeroxAppy.Finances;
+using System.ComponentModel.DataAnnotations;
 
 namespace BeroxAppy.Web.Pages.Finance.Salaries
 {
@@ -48,27 +49,37 @@ namespace BeroxAppy.Web.Pages.Finance.Salaries
                     return new JsonResult(new { success = false, message = "Ödeme yapılacak çalışan seçilmedi." });
                 }
 
+                decimal paymentLeft = request.PaymentAmount;
+                int employeeCount = 0;
+                decimal totalPaid = 0;
+
                 foreach (var employeeSalary in request.EmployeeSalaries)
                 {
-                    if (employeeSalary.Amount > 0)
+                    if (employeeSalary.Amount > 0 && paymentLeft > 0)
                     {
+                        // Çalışanın maaşından fazla ödeme olamaz!
+                        decimal payThis = Math.Min(employeeSalary.Amount, paymentLeft);
+
                         await _financeAppService.PayEmployeeSalaryAsync(
                             employeeSalary.EmployeeId,
-                            employeeSalary.Amount,
-                            request.PaymentMethod,
-                            request.Note
+                            payThis,
+                            request.PaymentMethod
                         );
+
+                        paymentLeft -= payThis;
+                        totalPaid += payThis;
+                        employeeCount++;
+
+                        if (paymentLeft <= 0)
+                            break;
                     }
                 }
-
-                var totalAmount = request.EmployeeSalaries.Sum(x => x.Amount);
-                var employeeCount = request.EmployeeSalaries.Count(x => x.Amount > 0);
 
                 return new JsonResult(new
                 {
                     success = true,
-                    message = $"{employeeCount} çalışana toplam ₺{totalAmount:N2} maaş ödemesi başarıyla yapıldı.",
-                    totalAmount = totalAmount,
+                    message = $"{employeeCount} çalışana toplam ₺{totalPaid:N2} maaş ödemesi başarıyla yapıldı.",
+                    totalAmount = totalPaid,
                     employeeCount = employeeCount
                 });
             }
@@ -78,7 +89,7 @@ namespace BeroxAppy.Web.Pages.Finance.Salaries
             }
         }
 
-        public async Task<IActionResult> OnGetEmployeeSalaryDetailAsync(Guid employeeId)
+        public async Task<IActionResult> OnGetEmployeeDetailAsync(Guid employeeId)
         {
             try
             {
@@ -87,10 +98,40 @@ namespace BeroxAppy.Web.Pages.Finance.Salaries
 
                 var performance = await _financeAppService.GetEmployeeSalaryPerformanceAsync(employeeId, startDate, endDate);
 
+                // Son ödemeleri getir
+                var recentPayments = await _employeePaymentRepository.GetListAsync(x =>
+                    x.EmployeeId == employeeId &&
+                    x.PaymentType == PaymentType.Salary);
+
+                var recentPaymentsList = recentPayments
+                    .OrderByDescending(x => x.PaymentDate)
+                    .Take(10)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PaymentDate,
+                        x.SalaryAmount,
+                        x.PaymentMethod,
+                        x.Note,
+                        PaymentMethodDisplay = GetPaymentMethodDisplay(x.PaymentMethod)
+                    })
+                    .ToList();
+
                 return new JsonResult(new
                 {
                     success = true,
-                    data = performance
+                    data = new
+                    {
+                        Performance = performance,
+                        RecentPayments = recentPaymentsList,
+                        Summary = new
+                        {
+                            TotalSalaryPaid = performance.TotalSalaryPaid,
+                            PaymentCount = performance.PaymentCount,
+                            PeriodStart = startDate,
+                            PeriodEnd = endDate
+                        }
+                    }
                 });
             }
             catch (Exception ex)
@@ -158,5 +199,58 @@ namespace BeroxAppy.Web.Pages.Finance.Salaries
                 PeriodSummaries = periodSummaries
             };
         }
+
+        private string GetPaymentMethodDisplay(PaymentMethod method)
+        {
+            return method switch
+            {
+                PaymentMethod.Cash => "Nakit",
+                PaymentMethod.CreditCard => "Kredi Kartı",
+                PaymentMethod.DebitCard => "Banka Kartı",
+                PaymentMethod.BankTransfer => "Havale/EFT",
+                PaymentMethod.Check => "Çek",
+                PaymentMethod.Other => "Diğer",
+                _ => "Bilinmiyor"
+            };
+        }
+    }
+
+    // Yardımcı DTO'lar
+    public class PaySalaryRequestDto
+    {
+        [Required]
+        public List<EmployeeSalaryDto> EmployeeSalaries { get; set; }
+        [Required]
+        public PaymentMethod PaymentMethod { get; set; }
+        [Required]
+        public decimal PaymentAmount { get; set; }
+    }
+
+    public class EmployeeSalaryDto
+    {
+        [Required]
+        public Guid EmployeeId { get; set; }
+
+        [Required]
+        public string EmployeeName { get; set; }
+
+        [Range(0.01, double.MaxValue)]
+        public decimal Amount { get; set; }
+    }
+
+    public class SalaryPaymentSummaryDto
+    {
+        public decimal TotalDueSalaries { get; set; }
+        public int DueEmployeeCount { get; set; }
+        public decimal ThisMonthPaidSalaries { get; set; }
+        public int TotalEmployeeCount { get; set; }
+        public Dictionary<SalaryPeriodType, SalaryPeriodSummary> PeriodSummaries { get; set; }
+    }
+
+    public class SalaryPeriodSummary
+    {
+        public int EmployeeCount { get; set; }
+        public decimal TotalAmount { get; set; }
+        public int DueCount { get; set; }
     }
 }
