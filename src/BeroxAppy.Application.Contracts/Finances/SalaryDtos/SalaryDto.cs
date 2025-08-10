@@ -15,6 +15,7 @@ namespace BeroxAppy.Finances.SalaryDtos
         public decimal FixedSalary { get; set; }
         public SalaryPeriodType SalaryPeriod { get; set; }
         public int PaymentDay { get; set; }
+        public int? PaymentWeekday { get; set; } //Haftalık ödemeler için
         public DateTime? LastSalaryPaymentDate { get; set; }
         public DateTime NextPaymentDue { get; set; }
         public bool IsDue { get; set; }
@@ -23,6 +24,9 @@ namespace BeroxAppy.Finances.SalaryDtos
         public PaymentMethod PreferredPaymentMethod { get; set; }
         public string SalaryPeriodDisplay { get; set; }
         public decimal CalculatedAmount { get; set; } // Dönem başına hesaplanan tutar
+        public DateTime PeriodStart { get; set; }
+        public DateTime PeriodEnd { get; set; }
+        public string PeriodDisplay { get; set; }
     }
 
     // Maaş ödeme özeti
@@ -81,5 +85,12 @@ namespace BeroxAppy.Finances.SalaryDtos
         public string Note { get; set; }
         public DateTime PeriodStart { get; set; }
         public DateTime PeriodEnd { get; set; }
+    }
+
+    public class SalaryPeriodInfo
+    {
+        public DateTime PeriodStart { get; set; }
+        public DateTime PeriodEnd { get; set; }
+        public DateTime PaymentDueDate { get; set; }
     }
 }

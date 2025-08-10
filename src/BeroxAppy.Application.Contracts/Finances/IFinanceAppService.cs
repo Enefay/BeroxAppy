@@ -32,7 +32,8 @@ namespace BeroxAppy.Finances
         /// <summary>
         /// Çalışana maaş ödemesi yapar
         /// </summary>
-        Task PayEmployeeSalaryAsync(Guid employeeId, decimal amount, PaymentMethod paymentMethod, string? note = null);
+        Task PayEmployeeSalaryAsync(Guid employeeId, decimal amount, PaymentMethod paymentMethod, string? note = null, DateTime? periodStart = null, DateTime? periodEnd = null);
+
 
         /// <summary>
         /// Çalışanın maaş performansını getirir

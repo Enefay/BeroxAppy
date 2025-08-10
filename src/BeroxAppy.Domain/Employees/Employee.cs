@@ -56,11 +56,13 @@ namespace BeroxAppy.Employees
         public SalaryPeriodType SalaryPeriod { get; set; } = SalaryPeriodType.Monthly;
         public int PaymentDay { get; set; } = 1; // Ayın kaçında ödenir
         public PaymentMethod PreferredPaymentMethod { get; set; } = PaymentMethod.BankTransfer;
+        public DateOnly EmploymentStartDate { get; set; } // baslangic tarihi
+        public int? PaymentWeekday { get; set; } // pzt 1 , sali 2 ...
+        public DateTime? LastSalaryPaymentDate { get; set; }
 
         // Komisyon takibi için
         public decimal CurrentPeriodCommission { get; set; } = 0; // Mevcut dönem komisyonu
         public DateTime LastCommissionResetDate { get; set; } = DateTime.Now;
-        public DateTime? LastSalaryPaymentDate { get; set; }
 
 
         // Navigation properties

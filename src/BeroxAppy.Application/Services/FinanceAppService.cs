@@ -364,41 +364,66 @@ namespace BeroxAppy.Services
 
             foreach (var employee in employees)
             {
-                //maaş almayanlar
+                // Maaş almayanları atla
                 if (employee.FixedSalary <= 0)
                 {
                     continue;
                 }
 
-                var lastSalaryPayment = await _employeePaymentRepository
+                // Bu çalışanın tüm maaş ödemelerini getir
+                var allSalaryPayments = await _employeePaymentRepository
                     .GetListAsync(x => x.EmployeeId == employee.Id && x.PaymentType == PaymentType.Salary);
 
-                var lastPayment = lastSalaryPayment.OrderByDescending(x => x.PaymentDate).FirstOrDefault();
+                var startDate = employee.EmploymentStartDate.ToDateTime(TimeOnly.MinValue);
+                var today = DateTime.Now.Date;
 
-                // Sonraki ödeme tarihini hesapla
-                var nextPaymentDue = CalculateNextPaymentDate(employee, lastPayment?.PaymentDate);
-                var isDue = DateTime.Now.Date >= nextPaymentDue.Date;
-                var daysOverdue = isDue ? (DateTime.Now.Date - nextPaymentDue.Date).Days : 0;
+                // Son ödeme tarihini bul
+                var lastPayment = allSalaryPayments
+                    .OrderByDescending(x => x.PaymentDate)
+                    .FirstOrDefault();
 
-                // Dönem tutarını hesapla
-                var calculatedAmount = CalculatePeriodAmount(employee.FixedSalary, employee.SalaryPeriod);
+                DateTime nextPeriodStart;
 
-                result.Add(new EmployeeSalarySummaryDto
+                if (lastPayment != null)
                 {
-                    EmployeeId = employee.Id,
-                    EmployeeName = $"{employee.FirstName} {employee.LastName}",
-                    FixedSalary = employee.FixedSalary,
-                    SalaryPeriod = employee.SalaryPeriod,
-                    PaymentDay = employee.PaymentDay,
-                    LastSalaryPaymentDate = lastPayment?.PaymentDate,
-                    NextPaymentDue = nextPaymentDue,
-                    IsDue = isDue,
-                    CanPay = isDue || AllowEarlyPayment(employee, lastPayment?.PaymentDate), // Erken ödeme izni
-                    DaysOverdue = daysOverdue,
-                    PreferredPaymentMethod = employee.PreferredPaymentMethod,
-                    SalaryPeriodDisplay = GetSalaryPeriodDisplay(employee.SalaryPeriod),
-                    CalculatedAmount = calculatedAmount
-                });
+                    // Son ödemeden sonraki dönem
+                    nextPeriodStart = lastPayment.PeriodEnd.AddDays(1);
+                }
+                else
+                {
+                    // İlk maaş - işe başlama tarihinden
+                    nextPeriodStart = startDate;
+                }
+
+                // Sadece bugüne kadar ödenmemiş dönemleri hesapla (max 24 dönem - 2 yıl)
+                var unpaidSalaries = CalculateUnpaidSalaries(employee, nextPeriodStart, today);
+
+                foreach (var salary in unpaidSalaries)
+                {
+                    var daysOverdue = (today - salary.PaymentDueDate.Date).Days;
+                    var isDue = today >= salary.PaymentDueDate.Date;
+
+                    result.Add(new EmployeeSalarySummaryDto
+                    {
+                        EmployeeId = employee.Id,
+                        EmployeeName = $"{employee.FirstName} {employee.LastName}",
+                        FixedSalary = employee.FixedSalary,
+                        SalaryPeriod = employee.SalaryPeriod,
+                        PaymentDay = employee.PaymentDay,
+                        PaymentWeekday = employee.PaymentWeekday,
+                        LastSalaryPaymentDate = lastPayment?.PaymentDate,
+                        NextPaymentDue = salary.PaymentDueDate,
+                        IsDue = isDue,
+                        CanPay = isDue || (today >= salary.PeriodEnd.Date),
+                        DaysOverdue = Math.Max(0, daysOverdue),
+                        PreferredPaymentMethod = employee.PreferredPaymentMethod,
+                        SalaryPeriodDisplay = GetSalaryPeriodDisplay(employee.SalaryPeriod),
+                        CalculatedAmount = employee.FixedSalary,
+                        PeriodStart = salary.PeriodStart,
+                        PeriodEnd = salary.PeriodEnd,
+                        PeriodDisplay = $"{salary.PeriodStart:dd.MM.yyyy} - {salary.PeriodEnd:dd.MM.yyyy}"
+                    });
+                }
             }
 
             return result.OrderByDescending(x => x.IsDue)
@@ -408,7 +433,7 @@ namespace BeroxAppy.Services
         }
 
         // Maaş öde
-        public async Task PayEmployeeSalaryAsync(Guid employeeId, decimal amount, PaymentMethod paymentMethod, string? note = null)
+        public async Task PayEmployeeSalaryAsync(Guid employeeId, decimal amount, PaymentMethod paymentMethod, string? note = null, DateTime? periodStart = null, DateTime? periodEnd = null)
         {
             var employee = await _employeeRepository.GetAsync(employeeId);
 
@@ -417,24 +442,32 @@ namespace BeroxAppy.Services
                 throw new UserFriendlyException("Ödeme tutarı 0'dan büyük olmalı!");
             }
 
-            // Maksimum ödeme tutarını kontrol et (dönem tutarından fazla olmasın)
-            var maxAmount = CalculatePeriodAmount(employee.FixedSalary, employee.SalaryPeriod);
-            if (amount > maxAmount)
+            // Tam maaştan fazla ödeme kontrolü
+            if (amount > employee.FixedSalary)
             {
-                throw new UserFriendlyException($"Ödeme tutarı dönem tutarından (₺{maxAmount:N2}) fazla olamaz!");
+                throw new UserFriendlyException($"Ödeme tutarı maaştan (₺{employee.FixedSalary:N2}) fazla olamaz!");
             }
 
-            // Dönem bilgilerini hesapla
-            var lastPayment = await _employeePaymentRepository
-                .GetListAsync(x => x.EmployeeId == employeeId && x.PaymentType == PaymentType.Salary);
+            // Eğer dönem bilgisi verilmemişse, otomatik hesapla
+            if (!periodStart.HasValue || !periodEnd.HasValue)
+            {
+                var lastPayment = await _employeePaymentRepository
+                    .GetListAsync(x => x.EmployeeId == employeeId && x.PaymentType == PaymentType.Salary);
 
-            var lastSalaryPayment = lastPayment.OrderByDescending(x => x.PaymentDate).FirstOrDefault();
+                var lastSalaryPayment = lastPayment.OrderByDescending(x => x.PaymentDate).FirstOrDefault();
 
-            var periodStart = lastSalaryPayment?.PeriodEnd.AddDays(1) ??
-                             CalculatePeriodStart(employee.SalaryPeriod, employee.PaymentDay);
-            var periodEnd = CalculatePeriodEnd(periodStart, employee.SalaryPeriod);
+                if (lastSalaryPayment != null)
+                {
+                    periodStart = lastSalaryPayment.PeriodEnd.AddDays(1);
+                }
+                else
+                {
+                    // İlk ödeme - işe başlama tarihinden başla
+                    periodStart = employee.CreationTime.Date;
+                }
 
-            var isPartial = amount < employee.CurrentPeriodCommission + amount; // Ödenen, toplamdan azsa kısmi
+                periodEnd = CalculatePeriodEndFromStart(periodStart.Value, employee.SalaryPeriod);
+            }
 
             // Ödeme kaydı oluştur
             var payment = new EmployeePayment
@@ -447,11 +480,10 @@ namespace BeroxAppy.Services
                 PaymentDate = DateTime.Now,
                 PaymentMethod = paymentMethod,
                 Note = string.IsNullOrWhiteSpace(note)
-                 ? (isPartial
-                     ? $"Kısmi maaş ödemesi - {DateTime.Now:dd.MM.yyyy}"
-                     : $"Maaş ödemesi - {DateTime.Now:dd.MM.yyyy}")
-                 : note,
-                PeriodEnd = periodEnd,
+                    ? $"Maaş ödemesi ({periodStart.Value:dd.MM.yyyy} - {periodEnd.Value:dd.MM.yyyy})"
+                    : note,
+                PeriodStart = periodStart.Value,
+                PeriodEnd = periodEnd.Value,
                 PaymentType = PaymentType.Salary
             };
 
@@ -502,6 +534,134 @@ namespace BeroxAppy.Services
             };
         }
 
+
+
+        // Beklenen maaş dönemlerini hesapla
+        private List<SalaryPeriodInfo> CalculateUnpaidSalaries(Employee employee, DateTime startDate, DateTime endDate)
+        {
+            var periods = new List<SalaryPeriodInfo>();
+            var currentDate = startDate.Date;
+
+            // Maximum 24 dönem hesapla (güvenlik için)
+            var maxPeriods = 24;
+            var periodCount = 0;
+
+            switch (employee.SalaryPeriod)
+            {
+                case SalaryPeriodType.Daily:
+                    // Günlük: her gün
+                    while (currentDate <= endDate && periodCount < maxPeriods)
+                    {
+                        periods.Add(new SalaryPeriodInfo
+                        {
+                            PeriodStart = currentDate,
+                            PeriodEnd = currentDate,
+                            PaymentDueDate = currentDate.AddDays(1) // Ertesi gün öde
+                        });
+                        currentDate = currentDate.AddDays(1);
+                        periodCount++;
+                    }
+                    break;
+
+                case SalaryPeriodType.Weekly:
+                    // Haftalık: belirlenen günde ödeme
+                    var paymentDayOfWeek = (DayOfWeek)((employee.PaymentWeekday ?? 1) % 7); // 1=Pazartesi
+
+                    while (currentDate <= endDate && periodCount < maxPeriods)
+                    {
+                        // Bu haftanın başlangıcını bul (Pazartesi)
+                        var weekStart = currentDate;
+                        while (weekStart.DayOfWeek != DayOfWeek.Monday)
+                        {
+                            weekStart = weekStart.AddDays(-1);
+                        }
+
+                        var weekEnd = weekStart.AddDays(6); // Pazar
+
+                        // Ödeme tarihi: belirlenen günde
+                        var paymentDate = weekStart;
+                        while (paymentDate.DayOfWeek != paymentDayOfWeek)
+                        {
+                            paymentDate = paymentDate.AddDays(1);
+                        }
+                        // Eğer ödeme günü haftanın sonundaysa, bir sonraki haftaya kaydir
+                        if (paymentDate < weekEnd)
+                        {
+                            paymentDate = paymentDate.AddDays(7);
+                        }
+
+                        periods.Add(new SalaryPeriodInfo
+                        {
+                            PeriodStart = weekStart,
+                            PeriodEnd = weekEnd,
+                            PaymentDueDate = paymentDate
+                        });
+
+                        currentDate = weekEnd.AddDays(1);
+                        periodCount++;
+                    }
+                    break;
+
+                case SalaryPeriodType.BiWeekly:
+                    // 2 Haftalık
+                    while (currentDate <= endDate && periodCount < maxPeriods)
+                    {
+                        var periodStart = currentDate;
+                        var periodEnd = currentDate.AddDays(13); // 14 gün
+                        var paymentDate = periodEnd.AddDays(1);
+
+                        periods.Add(new SalaryPeriodInfo
+                        {
+                            PeriodStart = periodStart,
+                            PeriodEnd = periodEnd,
+                            PaymentDueDate = paymentDate
+                        });
+
+                        currentDate = periodEnd.AddDays(1);
+                        periodCount++;
+                    }
+                    break;
+
+                case SalaryPeriodType.Monthly:
+                    // Aylık: ayın belirlenen günü
+                    while (currentDate <= endDate && periodCount < maxPeriods)
+                    {
+                        var monthStart = new DateTime(currentDate.Year, currentDate.Month, 1);
+                        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+                        // İlk dönem: işe başladığı günden başlayabilir
+                        if (periodCount == 0 && currentDate > monthStart)
+                        {
+                            monthStart = currentDate;
+                        }
+
+                        // Ödeme günü: ayın belirlenen günü
+                        var paymentDay = Math.Min(employee.PaymentDay, DateTime.DaysInMonth(monthEnd.Year, monthEnd.Month));
+                        var paymentDate = new DateTime(monthEnd.Year, monthEnd.Month, paymentDay);
+
+                        // Eğer ödeme günü henüz geçmemişse, sonraki aya ertelenebilir
+                        if (paymentDate < monthEnd)
+                        {
+                            paymentDate = paymentDate.AddMonths(1);
+                            paymentDate = new DateTime(paymentDate.Year, paymentDate.Month,
+                                Math.Min(employee.PaymentDay, DateTime.DaysInMonth(paymentDate.Year, paymentDate.Month)));
+                        }
+
+                        periods.Add(new SalaryPeriodInfo
+                        {
+                            PeriodStart = monthStart,
+                            PeriodEnd = monthEnd,
+                            PaymentDueDate = paymentDate
+                        });
+
+                        currentDate = monthEnd.AddDays(1);
+                        periodCount++;
+                    }
+                    break;
+            }
+
+            return periods;
+        }
 
         // Günlük özet oluştur
         private async Task<DailyFinancialSummary> CreateDailySummaryAsync(DateTime date)
@@ -685,5 +845,17 @@ namespace BeroxAppy.Services
             };
         }
 
+        //todo settinmanager
+        private DateTime CalculatePeriodEndFromStart(DateTime start, SalaryPeriodType period)
+        {
+            return period switch
+            {
+                SalaryPeriodType.Daily => start,
+                SalaryPeriodType.Weekly => start.AddDays(6),
+                SalaryPeriodType.BiWeekly => start.AddDays(13),
+                SalaryPeriodType.Monthly => start.AddMonths(1).AddDays(-1),
+                _ => start.AddMonths(1).AddDays(-1)
+            };
+        }
     }
 }
